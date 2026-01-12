@@ -1,0 +1,2534 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>INFINITY BATTLE: DARK ATMOSPHERE</title>
+    <style>
+        :root {
+            --bg: #050508; --panel: #0a0a12; --border: #333;
+            --text: #e0e0e0; --gold: #ffd700; --red: #ff3333; 
+            --green: #44ff44; --blue: #4488ff; --cyan: #00ffff; --violet: #aa55ff;
+            --burn: #ff8800; --freeze: #aaddff; --chaos: #ff00ff; --doom: #880000;
+        }
+        
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body { 
+            background-color: var(--bg); color: var(--text); 
+            font-family: 'Courier New', monospace; margin: 0; 
+            display: flex; flex-direction: column; height: 100vh; overflow: hidden; 
+            user-select: none; text-shadow: 0 0 2px rgba(0,0,0,0.5);
+            font-size: 15px; 
+            transition: font-size 0.1s ease;
+            position: relative; 
+        }
+
+        /* --- HIGH END MAP CANVAS --- */
+        #dungeonMapCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1; 
+    background: #020203;
+    
+    /* --- FÜGE DIESE ZEILEN HINZU: --- */
+    opacity: 1.0;            /* Stellt sicher, dass es voll sichtbar ist */
+    filter: brightness(2.2); /* Macht die dunkle Karte doppelt so hell */
+}
+
+        /* CRT SCANLINES */
+        body::before {
+            content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.2) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 1000; background-size: 100% 3px, 3px 100%; pointer-events: none;
+        }
+
+        /* ANIMATIONS */
+        @keyframes shake { 0% { transform: translate(1px, 1px); } 10% { transform: translate(-1px, -2px); } 20% { transform: translate(-3px, 0px); } 50% { transform: translate(-1px, 2px); } 100% { transform: translate(0, 0); } }
+        .shake { animation: shake 0.4s; }
+        
+        @keyframes flash-red { 0% { background: rgba(255,0,0,0.5); } 100% { background: transparent; } }
+        .flash-red { animation: flash-red 0.3s; }
+        
+        @keyframes flash-white { 0% { background: rgba(255,255,255,0.8); } 100% { background: transparent; } }
+        .flash-white { animation: flash-white 0.2s; }
+
+        @keyframes flash-gold { 0% { background: rgba(255,215,0,0.3); } 100% { background: transparent; } }
+        .flash-gold { animation: flash-gold 0.5s; }
+
+        @keyframes flash-doom { 0% { background: rgba(100,0,0,0.6); box-shadow: inset 0 0 50px #f00; } 100% { background: transparent; } }
+        .flash-doom { animation: flash-doom 0.6s; }
+
+        @keyframes flash-chaos { 0% { background: rgba(255,0,255,0.4); } 100% { background: transparent; } }
+        .flash-chaos { animation: flash-chaos 0.4s; }
+
+        @keyframes limit-pulse { 0% { box-shadow: 0 0 5px var(--gold); transform: scale(1); } 50% { box-shadow: 0 0 20px var(--gold); transform: scale(1.02); } 100% { box-shadow: 0 0 5px var(--gold); transform: scale(1); } }
+        
+        .limit-ready { 
+            animation: limit-pulse 1s infinite; 
+            border: 2px solid var(--gold) !important; 
+            color: var(--gold) !important; 
+            background: #220000 !important;
+            cursor: pointer !important; 
+            pointer-events: auto !important;
+        }
+
+        .mash-mode {
+            background: #440000 !important;
+            border-color: #ff0000 !important;
+            color: #fff !important;
+            font-size: 1.6em !important;
+            transform: scale(1.1);
+        }
+
+        @keyframes floatText { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-80px) scale(1.5); } }
+        .floating-val { position: absolute; font-weight: bold; font-size: 2.4em; animation: floatText 1.2s forwards; z-index: 2000; pointer-events: none; text-shadow: 3px 3px 0 #000; left: 50%; top: 30%; width: 100%; text-align: center; margin-left: -50%; }
+
+        /* SCREENS */
+        #start-screen, #class-screen, #story-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #020205; z-index: 5000; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
+        }
+
+        #start-screen { background: radial-gradient(circle at center, #1a0b1a 0%, #050508 100%); }
+        
+        .glass-box {
+            background: rgba(20, 20, 25, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 0 60px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.5);
+            max-width: 500px;
+            width: 90%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .glass-box::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: linear-gradient(90deg, transparent, var(--chaos), transparent);
+        }
+
+        .chaos-active {
+            color: var(--chaos);
+            font-size: 0.8em;
+            letter-spacing: 4px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px var(--chaos);
+            animation: chaos-pulse 2s infinite;
+        }
+        
+        @keyframes chaos-pulse { 0% {opacity:0.6} 50% {opacity:1} 100% {opacity:0.6} }
+        
+        #story-screen { background: rgba(0,0,0,0.98); z-index: 6000; padding: 30px; display: none; }
+        .story-text { font-size: 1.3em; line-height: 1.6; color: #eee; max-width: 600px; margin-bottom: 20px; text-align: left; border-left: 4px solid var(--gold); padding-left: 20px; min-height: 150px; white-space: pre-wrap; }
+        .story-btn { background: transparent; border: 1px solid var(--gold); color: var(--gold); padding: 12px 30px; font-size: 1.2em; cursor: pointer; transition: 0.2s; text-transform: uppercase; letter-spacing: 2px; }
+        .story-btn:hover { background: var(--gold); color: #000; }
+        .skip-btn { position: absolute; top: 20px; right: 20px; color: #555; border: 1px solid #333; background: transparent; padding: 10px 15px; cursor: pointer; text-transform: uppercase; font-size: 0.9em; font-weight:bold; }
+        .skip-btn:hover { color: var(--red); border-color: var(--red); }
+
+        .glitch-title {
+            font-size: 2.8em; font-weight: bold; color: var(--red);
+            text-shadow: 2px 2px var(--cyan), -2px -2px var(--violet);
+            margin-bottom: 5px;
+        }
+        .start-btn-big {
+            background: linear-gradient(45deg, #220000, #440000); 
+            border: 1px solid var(--red); color: var(--text);
+            padding: 18px 50px; font-size: 1.5em; font-family: inherit; cursor: pointer;
+            text-transform: uppercase; letter-spacing: 3px;
+            box-shadow: 0 0 15px rgba(255, 0, 0, 0.3); 
+            margin-top: 25px;
+            transition: all 0.2s;
+            border-radius: 4px;
+        }
+        .start-btn-big:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(255, 0, 0, 0.6);
+            background: linear-gradient(45deg, #440000, #660000);
+            color: #fff;
+        }
+        .itch-link {
+            color: var(--cyan); text-decoration: none; border-bottom: 1px dashed var(--cyan);
+            margin-top: 30px; font-size: 0.9em; letter-spacing: 1px;
+            opacity: 0.7;
+        }
+        .itch-link:hover { color: #fff; border-bottom: 1px solid #fff; opacity: 1; }
+
+        .class-btn {
+            background: #111; border: 1px solid #444; color: #888; width: 85%; max-width: 400px;
+            padding: 18px; margin: 8px; text-align: left; cursor: pointer; transition: 0.2s; position: relative;
+        }
+        .class-btn:hover { border-color: var(--text); color: var(--text); background: #222; transform: translateX(10px); }
+        .class-btn h3 { margin: 0 0 5px 0; color: var(--cyan); font-size: 1.3em; }
+        .class-btn small { font-size: 0.9em; }
+
+        /* UI LAYOUT */
+        #header { 
+            background: var(--panel); padding: 12px; border-bottom: 2px solid var(--border); 
+            display: flex; flex-direction: column; flex-shrink: 0; z-index: 10; gap: 5px;
+        }
+        .top-row { display: flex; justify-content: space-between; width: 100%; align-items: flex-start; }
+        .hp-label { font-size: 1.2em; font-weight: bold; letter-spacing: 1px; }
+
+        .music-toggle {
+            cursor: pointer; font-size: 0.8em; color: var(--cyan); border: 1px solid #333; 
+            padding: 2px 6px; border-radius: 3px; background: #111; margin-left: 10px;
+        }
+        .music-toggle:hover { color: #fff; border-color: var(--cyan); }
+
+        .limit-container { width: 100%; height: 8px; background: #222; border: 1px solid #444; position: relative; overflow: hidden; margin-top: 6px; }
+        .limit-bar { height: 100%; background: linear-gradient(90deg, #554400, var(--gold)); width: 0%; transition: width 0.3s; }
+
+        #log-container { 
+            flex-grow: 1; overflow-y: auto; padding: 15px; font-size: 1em; line-height: 1.5; 
+            scroll-behavior: smooth; 
+            /* Transparent für Map Sichtbarkeit */
+            background: rgba(8, 8, 12, 0.1); 
+            z-index: 1;
+            /* Leichter Blur für bessere Lesbarkeit */
+            backdrop-filter: blur(1px);
+        }
+        .entry { margin-bottom: 8px; padding-left: 10px; border-left: 3px solid transparent; min-height: 1.4em; }
+        .entry.turn { 
+            background: rgba(18, 18, 24, 0.8); border-left-color: var(--cyan); padding: 10px; 
+            margin-top: 15px; margin-bottom: 10px; font-weight: bold; text-transform: uppercase; 
+            letter-spacing: 1px; border-top: 1px solid #222; border-bottom: 1px solid #222; 
+        }
+        .entry.intro-text { color: #e0e0e0; font-style: italic; border-left: 3px solid var(--gold); background: rgba(255, 215, 0, 0.05); }
+        .entry.death-text { color: #888; border-left: 3px solid var(--red); margin-top: 10px; }
+        .entry.item-drop { color: var(--green); border-left: 3px solid var(--green); font-weight: bold; }
+        
+        #controls { background: var(--panel); padding: 10px; border-top: 2px solid var(--border); flex-shrink: 0; display: flex; flex-direction: column; gap: 6px; z-index: 10; }
+        #hand-container { max-height: 45vh; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 2px; }
+        
+        /* CARD BUTTONS */
+        .card-btn { 
+            background: rgba(30, 30, 40, 0.95); border: 1px solid #444; color: #eee; padding: 14px; 
+            text-align: left; font-family: inherit; width: 100%; border-radius: 4px; 
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.5); transition: 0.1s; position: relative; overflow: hidden;
+            font-size: 0.95em; 
+        }
+        .card-btn.selected { background: #3a3a25; border-color: var(--gold); transform: translateX(5px); }
+        .card-btn.r-gold { border-left: 5px solid var(--gold); }
+        .card-btn.r-violet { border-left: 5px solid var(--violet); }
+        .card-btn.r-blue { border-left: 5px solid var(--blue); }
+        .card-btn.r-green { border-left: 5px solid var(--green); }
+        .card-btn.r-red { border-left: 5px solid var(--red); background: #2a0000; }
+        .card-btn.r-cursed { border-left: 5px solid var(--chaos); background: #1a001a; border-right: 1px solid var(--chaos); }
+
+        .action-btn { 
+            background: #008b8b; color: white; border: none; padding: 16px; 
+            font-size: 1.2em; font-weight: bold; border-radius: 4px; 
+            text-transform: uppercase; width: 100%; cursor: pointer; font-family: inherit;
+            box-shadow: 0 4px 0 #005f5f; position: relative; top: 0; transition: 0.1s;
+        }
+        .action-btn:active { top: 4px; box-shadow: 0 0 0 transparent; }
+        .action-btn.red { background: #b22222; box-shadow: 0 4px 0 #7a0000; }
+        .action-btn.blue { background: #4169e1; box-shadow: 0 4px 0 #2a40a0; }
+        .action-btn.green { background: #228822; box-shadow: 0 4px 0 #005500; }
+        .action-btn.gold { background: #998800; box-shadow: 0 4px 0 #665500; color: #fff; }
+        .action-btn.sec { background: #333; box-shadow: 0 4px 0 #111; font-size: 1em; width: 48%; }
+        .action-btn:disabled { background: #222; color: #555; box-shadow: none; top: 0; cursor: not-allowed; }
+
+        /* TEXT COLORS */
+        .c-grey { color: #888; } .c-red { color: var(--red); } .c-green { color: var(--green); }
+        .c-blue { color: var(--blue); } .c-cyan { color: var(--cyan); } .c-gold { color: var(--gold); }
+        .c-violet { color: var(--violet); } .c-warn { color: #ffaa00; } .c-text { color: var(--text); }
+        .c-burn { color: var(--burn); } .c-freeze { color: var(--freeze); } .c-chaos { color: var(--chaos); }
+        .c-doom { color: var(--doom); font-weight: bold; }
+        .bold { font-weight: bold; } .italic { font-style: italic; }
+
+        .status-bar { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+        .badge { font-size: 0.75em; padding: 3px 6px; border-radius: 3px; background: #222; border: 1px solid #444; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge.b-leech { border-color: var(--green); color: var(--green); }
+        .badge.b-shack { border-color: var(--red); color: var(--red); }
+        .badge.b-buff { border-color: var(--violet); color: var(--violet); }
+        .badge.b-burn { border-color: var(--burn); color: var(--burn); }
+        .badge.b-freeze { border-color: var(--freeze); color: var(--freeze); }
+        .badge.b-doom { border-color: var(--doom); color: var(--doom); background: #110000; }
+
+        .deck-header { font-weight: bold; padding: 8px 0; border-bottom: 1px solid #333; margin-top: 15px; color: var(--cyan); font-size: 1.1em; }
+        .coll-header { font-weight: bold; padding: 8px 0; border-bottom: 1px solid #333; margin-top: 25px; color: var(--blue); font-size: 1.1em; }
+
+        #legend-bar { 
+            font-size: 0.75em; color: #555; text-align: center; padding-top: 8px; 
+            border-top: 1px solid #222; margin-top: 4px; display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;
+        }
+        .preview-box {
+            font-size: 0.9em; border: 1px dashed #444; padding: 8px 10px; background: #0e0e15;
+            margin-bottom: 8px; text-align: center; color: #888; border-radius: 4px; letter-spacing: 1px;
+        }
+
+        /* --- DASHBOARD HUB STYLES (NEW) --- */
+        .hub-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            width: 95%;
+            margin-bottom: 15px;
+            text-align: left;
+        }
+        .hub-box {
+            border: 1px solid #333;
+            background: rgba(20, 20, 25, 0.7);
+            padding: 12px;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+        }
+        .hub-title {
+            color: var(--gold);
+            border-bottom: 1px solid #444;
+            padding-bottom: 5px;
+            margin-bottom: 8px;
+            font-weight: bold;
+            font-size: 0.9em;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 4px; color: #888; font-size: 0.85em; }
+        .stat-val { color: var(--text); font-weight: bold; }
+        .lore-text { font-style: italic; color: #777; font-size: 0.85em; line-height: 1.4; }
+
+        /* --- SETTINGS SLIDERS --- */
+        .settings-container {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px dashed #333;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #666;
+            font-size: 0.8em;
+            gap: 10px;
+        }
+        .setting-row { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        .settings-container input[type=range] {
+            width: 150px;
+            margin-top: 5px;
+            cursor: pointer;
+            accent-color: var(--gold);
+        }
+
+        .typing::after { content: "▌"; animation: blink 0.8s infinite; color: var(--cyan); }
+        @keyframes blink { 0% {opacity:1} 50% {opacity:0} 100% {opacity:1} }
+    </style>
+</head>
+<body id="game-body">
+
+<canvas id="dungeonMapCanvas"></canvas>
+
+<div id="start-screen">
+    <div class="glass-box">
+        <div class="chaos-active">⚠ System: Chaos Active</div>
+        <div class="glitch-title">INFINITY BATTLE</div>
+        <div class="subtitle" style="margin-bottom: 20px; letter-spacing: 2px; color:#aaa; font-size:1.1em;">EXPANSION: DARKNESS</div>
+        <div class="c-grey" style="margin-bottom: 20px; font-size: 0.8em;">v11.0 // Patrolling Enemies // Dynamic Lighting</div>
+        <button class="start-btn-big" onclick="Game.enterClassSelection()">INITIALIZE</button>
+        
+        <div class="settings-container">
+            <div class="setting-row">
+                <label>TEXT SIZE</label>
+                <input type="range" min="12" max="26" value="15" oninput="Game.adjustFontSize(this.value)">
+            </div>
+            <div class="setting-row">
+                <label>MUSIC VOLUME</label>
+                <input type="range" min="0" max="100" value="30" oninput="AudioEngine.setVolume(this.value)">
+            </div>
+        </div>
+
+        <a href="https://real-hardcore.itch.io" target="_blank" class="itch-link">Real Hardcore - itch.io</a>
+    </div>
+</div>
+
+<div id="story-screen">
+    <button id="skip-btn" class="skip-btn">SKIP >></button>
+    <div class="c-gold bold" style="margin-bottom:15px; font-size:1.5em;">:: NARRATIVE LOG ::</div>
+    <div id="story-text-container" class="story-text"></div>
+    <button id="story-continue-btn" class="story-btn">PROCEED</button>
+</div>
+
+<div id="class-screen" style="display:none;">
+    <div class="glitch-title" style="font-size: 2em;">CHOOSE CLASS</div>
+    <div class="class-btn" onclick="Game.selectClass('Warrior')">
+        <h3>WARRIOR</h3>
+        <small class="c-grey">120 SANITY. Steel Specialist.</small>
+    </div>
+    <div class="class-btn" onclick="Game.selectClass('Rogue')">
+        <h3>ROGUE</h3>
+        <small class="c-grey">90 SANITY. Shadow Specialist.</small>
+    </div>
+    <div class="class-btn" onclick="Game.selectClass('Mage')">
+        <h3>BATTLE MAGE</h3>
+        <small class="c-grey">80 SANITY. Magic Specialist.</small>
+    </div>
+</div>
+
+<div id="header">
+    <div class="top-row">
+        <div style="width: 48%;">
+            <div class="hp-label c-green" id="p-hp">SANITY: 200/200</div>
+            <div class="c-gold bold" style="font-size:1.1em; margin-top:4px;">
+                GOLD: <span id="p-gold">0</span>
+                <button id="music-btn" class="music-toggle" onclick="AudioEngine.toggle()">♫ OFF</button>
+            </div>
+            <div id="p-status-bar" class="status-bar"></div>
+        </div>
+        <div style="width: 48%; text-align: right;">
+            <div class="hp-label c-red" id="e-hp">ENEMY HP</div>
+            <div class="c-cyan bold sub-label" id="lvl-disp" style="font-size:0.9em; margin-top:6px;">DEPTH 1</div>
+            <div id="e-status-bar" class="status-bar" style="justify-content: flex-end;"></div>
+            <div class="c-grey" style="font-size:0.7em; margin-top:6px; text-transform:uppercase;" id="cls-disp">CLASS: WARRIOR</div>
+        </div>
+    </div>
+    <div class="limit-container">
+        <div id="limit-bar" class="limit-bar"></div>
+    </div>
+    <div style="text-align: center; font-size: 0.7em; color: var(--gold); letter-spacing: 2px; margin-top:-2px;">LIMIT BREAK</div>
+</div>
+
+<div id="log-container"></div>
+
+<div id="controls">
+    <div id="preview-container" class="preview-box" style="display:none;"></div>
+    <div id="hand-container"></div>
+    <div id="legend-bar">
+        <span><b class="c-cyan">STEEL</b> > <b class="c-violet">SHADOW</b></span>
+        <span><b class="c-violet">SHADOW</b> > <b class="c-blue">MAGIC</b></span>
+        <span><b class="c-blue">MAGIC</b> > <b class="c-cyan">STEEL</b></span>
+        <span style="border-left: 1px solid #444; padding-left: 10px; margin-left: 5px;">
+            <b class="c-chaos">CHAOS</b> > <b class="c-text">ALL</b>
+        </span>
+    </div>
+    <div style="display:flex; gap:10px;" id="action-row">
+        <button id="main-btn" class="action-btn" onclick="Game.handleInput()">BOOTING...</button>
+    </div>
+</div>
+
+<script>
+// ==========================================
+// AUDIO ENGINE (RANDOM FIGHT & BOSS MODE)
+// ==========================================
+const AudioEngine = {
+    playlist: [
+        "https://raw.githubusercontent.com/videorelaxing/promo2/main/Infinity.mp3",
+        "https://raw.githubusercontent.com/videorelaxing/promo2/main/Infinity_full.mp3",
+        "https://raw.githubusercontent.com/videorelaxing/promo2/main/Infinity3.mp3"
+    ],
+
+    bossTrack: "https://raw.githubusercontent.com/videorelaxing/promo2/main/boss.mp3",
+
+    audio: new Audio(),
+    isPlaying: false,
+    volume: 0.1, // 10% Start
+    isBossMode: false,
+
+    init: function() {
+        this.audio.volume = this.volume;
+        this.audio.loop = true; // Wir loopen IMMER den aktuellen Track
+        this.updateUI();
+    },
+
+    // WIRD BEI NORMALEN KÄMPFEN GERUFEN
+    playRandom: function() {
+        // Boss Modus deaktivieren
+        this.isBossMode = false;
+        
+        if (this.playlist.length === 0) return;
+
+        // Zufälligen Song aus der Liste wählen
+        let randIdx = Math.floor(Math.random() * this.playlist.length);
+        this.audio.src = this.playlist[randIdx];
+        
+        // Loop an (damit der Song im Kampf nicht aufhört)
+        this.audio.loop = true; 
+        
+        // Abspielen (falls Musik an sein soll)
+        if (this.isPlaying) {
+            this.audio.play().catch(e => console.log("Audio play error:", e));
+        }
+        this.updateUI();
+    },
+
+    // WIRD BEIM BOSS GERUFEN
+    playBoss: function() {
+        if (!this.bossTrack) return;
+        
+        this.isBossMode = true;
+        this.audio.src = this.bossTrack;
+        this.audio.loop = true;
+        
+        if (this.isPlaying) {
+            this.audio.play().catch(e => console.log("Audio play error:", e));
+        }
+        this.updateUI();
+    },
+
+    // Genereller Play Befehl (z.B. durch Toggle Button)
+    play: function() {
+        // Falls noch keine Source da ist, nimm einen zufälligen Track
+        if (!this.audio.src) {
+            let randIdx = Math.floor(Math.random() * this.playlist.length);
+            this.audio.src = this.playlist[randIdx];
+        }
+        
+        this.audio.play().then(() => {
+            this.isPlaying = true;
+            this.updateUI();
+        }).catch(e => console.log(e));
+    },
+
+    pause: function() {
+        this.audio.pause();
+        this.isPlaying = false;
+        this.updateUI();
+    },
+
+    toggle: function() {
+        if (this.isPlaying) this.pause();
+        else this.play();
+    },
+
+    setVolume: function(val) {
+        this.volume = val / 100;
+        this.audio.volume = this.volume;
+    },
+
+    updateUI: function() {
+        let btn = document.getElementById('music-btn');
+        if(btn) {
+            let label = this.isBossMode ? "♫ BOSS" : "♫ ON";
+            if (!this.isPlaying) label = "♫ OFF";
+            
+            btn.innerText = label;
+            btn.style.color = this.isPlaying ? (this.isBossMode ? "var(--red)" : "var(--green)") : "var(--cyan)";
+            
+            if(this.isPlaying) {
+                btn.style.boxShadow = this.isBossMode ? "0 0 10px var(--red)" : "0 0 8px rgba(68, 255, 68, 0.4)";
+                btn.style.borderColor = this.isBossMode ? "var(--red)" : "var(--green)";
+            } else {
+                btn.style.boxShadow = "none";
+                btn.style.borderColor = "#333";
+            }
+        }
+    }
+};
+
+// ==========================================
+// FINAL DUNGEON ENGINE (Light Balance Fix)
+// ==========================================
+const DungeonMap = {
+    canvas: null,
+    ctx: null,
+    cacheCanvas: null,
+    cacheCtx: null,
+
+    rooms: [],
+    minions: [],
+    particles: [],
+    magicSparks: [], 
+    ash: [],
+    
+    // Objekt Listen
+    chests: [],
+    blood: [],
+    debris: [],
+    stairs: null,
+    cracks: [],
+    puddles: [],
+    webs: [],
+    rats: [],
+    wallTorches: [],
+    carpets: [],
+    shelves: [],
+    corpses: [],
+    chains: [],
+    cages: [],
+    spikes: [],
+    runes: [],
+    buildings: [],
+    statues: [],
+    tables: [],
+    banners: [],
+    
+    playerPos: { x: 0, y: 0 }, 
+    
+    playerState: { 
+        angle: 0,           
+        targetAngle: 0,     
+        combatTimer: 0, 
+        attackLunge: 0, 
+        idleTick: 0, 
+        lookOffset: 0       
+    },
+    combatEnemy: null, 
+
+    currentIdx: 0,
+    lastTime: 0,
+    history: [],
+    
+    scale: 1,
+
+    init: function() {
+        this.canvas = document.getElementById('dungeonMapCanvas');
+        if(!this.canvas) return;
+        this.ctx = this.canvas.getContext('2d'); 
+        
+        this.cacheCanvas = document.createElement('canvas');
+        this.cacheCtx = this.cacheCanvas.getContext('2d');
+
+        window.addEventListener('resize', () => this.resize());
+        this.resize();
+        requestAnimationFrame((t) => this.loop(t));
+    },
+
+    resize: function() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        
+        this.cacheCanvas.width = this.canvas.width;
+        this.cacheCanvas.height = this.canvas.height;
+
+        this.scale = Math.min(this.canvas.width / 1920, this.canvas.height / 1080);
+        if(this.scale < 0.6) this.scale = 0.6;
+        
+        this.generatePath(); 
+    },
+
+    generatePath: function() {
+        this.rooms=[]; this.minions=[]; this.particles=[]; this.ash=[]; this.magicSparks=[];
+        this.chests=[]; this.blood=[]; this.debris=[]; this.stairs=null;
+        this.cracks=[]; this.puddles=[]; this.webs=[]; this.rats=[];
+        this.wallTorches=[]; this.carpets=[]; this.shelves=[]; this.corpses=[];
+        this.chains=[]; this.cages=[]; this.spikes=[]; this.runes=[];
+        this.buildings=[]; this.statues=[]; this.tables=[]; this.banners=[];
+        
+        this.history=[]; this.currentIdx=0;
+        
+        let cx = this.canvas.width * 0.1;
+        let cy = this.canvas.height * 0.5;
+        let s = this.scale;
+        
+        for (let i = 0; i < 15; i++) {
+            let radius = (70 + Math.random() * 50) * s; 
+            this.rooms.push({ x: cx, y: cy, r: radius, id: i });
+            
+            if (i > 0) {
+                // MINIONS
+                let numMinions = Math.floor(Math.random() * 2) + 1;
+                for (let m = 0; m < numMinions; m++) {
+                    let a = Math.random() * Math.PI * 2, d = Math.random() * (radius - 15*s);
+                    let hasTorch = Math.random() < 0.5; 
+                    this.minions.push({ 
+                        roomIdx: i, 
+                        x: cx + Math.cos(a)*d, 
+                        y: cy + Math.sin(a)*d, 
+                        baseX: cx, baseY: cy, 
+                        radius: radius, 
+                        angle: a, 
+                        speed: 0.002 + Math.random()*0.005, 
+                        hasTorch: hasTorch
+                    });
+                }
+
+                let numRats = Math.floor(Math.random() * 5) + 2; 
+                for(let r=0; r<numRats; r++) {
+                    let a = Math.random() * Math.PI * 2, d = Math.random() * (radius - 5*s);
+                    this.rats.push({ x: cx + Math.cos(a)*d, y: cy + Math.sin(a)*d, vx: 0, vy: 0 });
+                }
+
+                // Deko
+                if (Math.random() < 0.15 && radius > 100*s) {
+                    this.buildings.push({
+                        x: cx + (Math.random()-0.5)*30*s, y: cy + (Math.random()-0.5)*30*s,
+                        w: (50 + Math.random()*30)*s, h: (50 + Math.random()*30)*s,
+                        rot: (Math.random()-0.5)*0.2
+                    });
+                }
+
+                if (Math.random() < 0.3) {
+                    let num = 1 + Math.floor(Math.random()*2);
+                    for(let k=0; k<num; k++) {
+                        let a = Math.random()*Math.PI*2, d = Math.random()*(radius-30*s);
+                        this.statues.push({ x: cx+Math.cos(a)*d, y: cy+Math.sin(a)*d, r: (8+Math.random()*6)*s, type: Math.random()>0.5 ? 'pillar' : 'bust' });
+                    }
+                }
+
+                if (Math.random() < 0.4) {
+                    let num = 1 + Math.floor(Math.random()*3);
+                    for(let k=0; k<num; k++) {
+                         let a = Math.random()*Math.PI*2;
+                         this.banners.push({
+                             x: cx + Math.cos(a)*(radius-5*s), y: cy + Math.sin(a)*(radius-5*s),
+                             angle: a + Math.PI/2,
+                             len: (40 + Math.random()*40)*s, width: (15+Math.random()*10)*s,
+                             colorVar: Math.random()
+                         });
+                    }
+                }
+
+                if(Math.random() < 0.25) {
+                     let a = Math.random()*Math.PI*2, d = Math.random()*(radius-40*s);
+                     this.tables.push({ x: cx+Math.cos(a)*d, y: cy+Math.sin(a)*d, w: (30+Math.random()*20)*s, h: (20+Math.random()*10)*s, rot: Math.random()*Math.PI });
+                }
+
+                if (Math.random() < 0.25) {
+                    let w = (40 + Math.random() * 40) * s; let h = (60 + Math.random() * 50) * s; let rot = (Math.random() - 0.5) * 0.5;
+                    let hue = Math.random() > 0.5 ? 0 : (Math.random() > 0.5 ? 260 : 30);
+                    this.carpets.push({ x: cx, y: cy, w: w, h: h, rot: rot, hue: hue });
+                }
+
+                let numChains = Math.floor(Math.random() * 3);
+                for(let ch=0; ch<numChains; ch++) {
+                    let a = Math.random() * Math.PI * 2;
+                    let len = (20 + Math.random() * 40) * s;
+                    this.chains.push({ x: cx + Math.cos(a)*(radius*0.8), y: cy + Math.sin(a)*(radius*0.8), len: len, width: (2+Math.random()*2)*s });
+                }
+
+                if(Math.random() < 0.4) {
+                    let a = Math.random() * Math.PI * 2, d = radius - 25*s;
+                    this.cages.push({ x: cx + Math.cos(a)*d, y: cy + Math.sin(a)*d, w: 20*s, h: 20*s, rot: Math.random()*0.5 });
+                }
+
+                if(Math.random() < 0.3) {
+                    let a = Math.random() * Math.PI * 2, d = Math.random() * (radius * 0.5);
+                    this.spikes.push({ x: cx + Math.cos(a)*d, y: cy + Math.sin(a)*d, count: 3 + Math.floor(Math.random()*5) });
+                }
+
+                if(Math.random() < 0.25) {
+                    this.runes.push({ x: cx, y: cy, size: (20 + Math.random()*30)*s, type: Math.floor(Math.random()*3) });
+                }
+                
+                let numShelves = Math.floor(Math.random() * 2);
+                for(let sh=0; sh<numShelves; sh++) {
+                    let a = Math.random() * Math.PI * 2, d = radius - 15*s; 
+                    this.shelves.push({ x: cx + Math.cos(a)*d, y: cy + Math.sin(a)*d, rot: a + Math.PI/2, w: 30*s, h: 10*s });
+                }
+                
+                if(Math.random() < 0.5) {
+                    let numTorches = Math.floor(Math.random() * 2) + 1;
+                    for(let t=0; t<numTorches; t++) {
+                        let a = Math.random() * Math.PI * 2;
+                        this.wallTorches.push({ x: cx + Math.cos(a) * radius, y: cy + Math.sin(a) * radius, angle: a });
+                    }
+                }
+                
+                if(Math.random() < 0.6) {
+                    let numC = 1 + Math.floor(Math.random() * 3);
+                    for(let k=0; k<numC; k++) {
+                        let a = Math.random() * Math.PI * 2, d = Math.random() * (radius - 20*s);
+                        this.corpses.push({ x: cx + Math.cos(a)*d, y: cy + Math.sin(a)*d, rot: Math.random() * Math.PI * 2 });
+                    }
+                }
+                
+                let numCracks = Math.floor(Math.random() * 3) + 1;
+                for(let c=0; c<numCracks; c++) {
+                    let a = Math.random() * Math.PI * 2, d = Math.random() * (radius - 20*s);
+                    let sx = cx + Math.cos(a)*d, sy = cy + Math.sin(a)*d;
+                    this.cracks.push({ x1: sx, y1: sy, x2: sx + (Math.random()-0.5)*40*s, y2: sy + (Math.random()-0.5)*40*s });
+                }
+                
+                if(Math.random() < 0.5) {
+                    let a = Math.random() * Math.PI * 2, d = Math.random() * (radius * 0.7);
+                    this.puddles.push({ x: cx + Math.cos(a)*d, y: cy + Math.sin(a)*d, rx: (15 + Math.random()*20)*s, ry: (10 + Math.random()*15)*s, rot: Math.random() * Math.PI });
+                }
+                
+                if(Math.random() < 0.5) {
+                    let a = Math.random() * Math.PI * 2;
+                    this.webs.push({ x: cx + Math.cos(a) * (radius - 2*s), y: cy + Math.sin(a) * (radius - 2*s), size: (20 + Math.random()*20)*s, ang: a + Math.PI });
+                }
+                
+                let numBlood = Math.floor(Math.random() * 5) + 2;
+                for(let b=0; b<numBlood; b++) {
+                    let a=Math.random()*Math.PI*2, d=Math.random()*(radius-15*s);
+                    this.blood.push({ x: cx+Math.cos(a)*d, y: cy+Math.sin(a)*d, size: (8+Math.random()*20)*s, type: Math.random()>0.6?'drag':'splatter', rot: Math.random()*Math.PI });
+                }
+                
+                let numDebris = Math.floor(Math.random() * 3);
+                for(let d=0; d<numDebris; d++) {
+                    let a=Math.random()*Math.PI*2, dist=Math.random()*(radius-20*s);
+                    this.debris.push({ x: cx+Math.cos(a)*dist, y: cy+Math.sin(a)*dist, size: (10+Math.random()*15)*s, type: Math.random()>0.6?'hole':'furniture', rot: Math.random()*Math.PI });
+                }
+                
+                if (Math.random() < 0.3) {
+                    let a=Math.random()*Math.PI*2, dist=Math.random()*(radius-20*s);
+                    this.chests.push({ x: cx+Math.cos(a)*dist, y: cy+Math.sin(a)*dist });
+                }
+            }
+            cx += radius + (70*s + Math.random() * 70*s); 
+            cy += (Math.random() - 0.5) * 250 * s; 
+            cy = Math.max(150*s, Math.min(this.canvas.height - 150*s, cy));
+        }
+        let lastRoom = this.rooms[this.rooms.length - 1];
+        this.stairs = { x: lastRoom.x, y: lastRoom.y };
+
+        this.playerPos = { x: this.rooms[0].x, y: this.rooms[0].y };
+        this.history.push(0); 
+
+        for(let i=0; i<100; i++) this.particles.push({ x: Math.random()*this.canvas.width, y: Math.random()*this.canvas.height, vx: (Math.random()-0.5)*0.2, vy: (Math.random()-0.5)*0.2, size: (Math.random()*3)*s, alpha: Math.random()*0.5 });
+        for(let i=0; i<60; i++) this.ash.push({ x: Math.random()*this.canvas.width, y: Math.random()*this.canvas.height, vx: (Math.random()-0.5)*0.5, vy: 0.2+Math.random()*0.5, size: (2+Math.random()*3)*s, rot: Math.random()*Math.PI });
+    
+        this.renderStaticWorld();
+    },
+
+    renderStaticWorld: function() {
+        let ctx = this.cacheCtx;
+        let s = this.scale;
+        
+        ctx.clearRect(0, 0, this.cacheCanvas.width, this.cacheCanvas.height);
+        
+        // Gänge
+        ctx.strokeStyle = '#100c0c'; ctx.lineWidth = 44*s; ctx.lineCap = 'round'; ctx.beginPath();
+        if(this.rooms.length > 0) { let r0 = this.rooms[0]; ctx.moveTo(r0.x, r0.y); for (let i = 0; i < this.rooms.length - 1; i++) { let r1 = this.rooms[i], r2 = this.rooms[i+1], midX = (r1.x + r2.x) / 2; ctx.bezierCurveTo(midX, r1.y, midX, r2.y, r2.x, r2.y); } } ctx.stroke();
+        
+        // Räume
+        this.rooms.forEach(r => { 
+            ctx.fillStyle = '#161212'; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI*2); ctx.fill(); 
+            ctx.fillStyle = '#0a0505'; for(let a=0; a<Math.PI*2; a+=Math.PI/6) { ctx.beginPath(); ctx.arc(r.x+Math.cos(a)*(r.r-5*s), r.y+Math.sin(a)*(r.r-5*s), 6*s, 0, Math.PI*2); ctx.fill(); } 
+            ctx.strokeStyle = '#221111'; ctx.lineWidth = 2*s; ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI*2); ctx.stroke(); 
+        });
+
+        this.runes.forEach(run => {
+            ctx.save(); ctx.translate(run.x, run.y);
+            ctx.strokeStyle = 'rgba(100, 0, 0, 0.4)'; ctx.lineWidth = 3*s;
+            ctx.beginPath(); ctx.arc(0,0, run.size, 0, Math.PI*2); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-run.size, 0); ctx.lineTo(run.size, 0); ctx.moveTo(0, -run.size); ctx.lineTo(0, run.size); ctx.stroke();
+            ctx.beginPath(); ctx.arc(0,0, run.size*0.6, 0, Math.PI*2); ctx.stroke();
+            ctx.restore();
+        });
+
+        this.carpets.forEach(c => {
+            ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.rot);
+            ctx.fillStyle = `hsl(${c.hue}, 40%, 15%)`; ctx.fillRect(-c.w/2, -c.h/2, c.w, c.h);
+            ctx.strokeStyle = `hsl(${c.hue}, 40%, 10%)`; ctx.lineWidth = 2*s; ctx.strokeRect(-c.w/2, -c.h/2, c.w, c.h);
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            for(let i=0; i<5; i++) ctx.fillRect((Math.random()-0.5)*c.w, (Math.random()-0.5)*c.h, Math.random()*10*s, Math.random()*10*s);
+            ctx.restore();
+        });
+        
+        ctx.strokeStyle = '#08080a'; ctx.lineWidth = 1.5*s; this.cracks.forEach(c => { ctx.beginPath(); ctx.moveTo(c.x1, c.y1); ctx.lineTo(c.x2, c.y2); ctx.stroke(); });
+        
+        ctx.fillStyle = '#1a1515'; ctx.strokeStyle = '#2a2222'; ctx.lineWidth = 4*s;
+        this.buildings.forEach(b => {
+            ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rot);
+            ctx.fillRect(-b.w/2, -b.h/2, b.w, b.h);
+            ctx.strokeRect(-b.w/2, -b.h/2, b.w, b.h);
+            ctx.fillStyle = '#050505'; ctx.fillRect(-b.w/4, b.h/2 - 5*s, b.w/2, 5*s);
+            ctx.restore();
+        });
+
+        ctx.fillStyle = '#222';
+        this.spikes.forEach(sp => {
+            for(let i=0; i<sp.count; i++) {
+                let ox = (Math.random()-0.5)*20*s, oy = (Math.random()-0.5)*20*s;
+                ctx.beginPath(); ctx.moveTo(sp.x+ox-3*s, sp.y+oy); ctx.lineTo(sp.x+ox, sp.y+oy-10*s); ctx.lineTo(sp.x+ox+3*s, sp.y+oy); ctx.fill();
+                ctx.fillStyle = '#600'; ctx.beginPath(); ctx.arc(sp.x+ox, sp.y+oy-10*s, 1.5*s, 0, Math.PI*2); ctx.fill(); ctx.fillStyle='#222';
+            }
+        });
+
+        this.puddles.forEach(p => { ctx.fillStyle = '#080505'; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.beginPath(); ctx.ellipse(0, 0, p.rx, p.ry, 0, 0, Math.PI*2); ctx.fill(); ctx.restore(); });
+        
+        this.statues.forEach(st => {
+            ctx.save(); ctx.translate(st.x, st.y);
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.ellipse(0, 2*s, st.r, st.r*0.6, 0, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#444'; ctx.strokeStyle = '#333'; ctx.lineWidth = 2*s;
+            if(st.type === 'pillar') {
+                 ctx.fillRect(-st.r/2, -st.r, st.r, st.r*2); ctx.strokeRect(-st.r/2, -st.r, st.r, st.r*2);
+            } else {
+                 ctx.beginPath(); ctx.arc(0, 0, st.r, 0, Math.PI*2); ctx.fill(); ctx.stroke(); 
+                 ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(0, -st.r/2, st.r*0.5, 0, Math.PI*2); ctx.fill(); 
+            }
+            ctx.restore();
+        });
+
+        this.tables.forEach(t => {
+             ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(t.rot);
+             ctx.fillStyle = '#3d2e18'; ctx.fillRect(-t.w/2, -t.h/2, t.w, t.h); 
+             ctx.fillStyle = '#2a1a0c'; for(let i of [-1,1]) for(let j of [-1,1]) ctx.fillRect(i*(t.w/2-4*s), j*(t.h/2-4*s), 4*s, 4*s); 
+             ctx.restore();
+        });
+
+        this.debris.filter(d => d.type === 'hole').forEach(d => { ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(d.x, d.y, d.size, d.size*0.7, d.rot, 0, Math.PI*2); ctx.fill(); });
+        ctx.strokeStyle = 'rgba(200, 200, 200, 0.1)'; ctx.lineWidth = 0.5*s; this.webs.forEach(w => { ctx.beginPath(); for(let i=0; i<7; i++) { ctx.moveTo(w.x, w.y); ctx.lineTo(w.x + Math.cos(w.ang + i*0.15)*w.size, w.y + Math.sin(w.ang + i*0.15)*w.size); } ctx.stroke(); });
+        
+        this.blood.forEach(b => { 
+            ctx.fillStyle = 'rgba(70, 0, 0, 0.8)'; 
+            if(b.type === 'splatter') { ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI*2); ctx.fill(); } 
+            else { ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.rot); ctx.fillRect(-b.size, -2*s, b.size*3, 4*s); ctx.restore(); } 
+        });
+        
+        this.corpses.forEach(c => { 
+            ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.rot); 
+            ctx.fillStyle = '#888'; ctx.beginPath(); ctx.arc(0, -5*s, 3*s, 0, Math.PI*2); ctx.fill(); 
+            ctx.strokeStyle = '#777'; ctx.lineWidth = 1.5*s; ctx.beginPath(); ctx.moveTo(0, -2*s); ctx.lineTo(0, 5*s); ctx.stroke(); 
+            ctx.fillStyle = 'rgba(100,0,0,0.5)'; ctx.beginPath(); ctx.arc(0, 0, 8*s, 0, Math.PI*2); ctx.fill();
+            ctx.restore(); 
+        });
+
+        this.cages.forEach(c => {
+            ctx.save(); ctx.translate(c.x, c.y); ctx.rotate(c.rot);
+            ctx.strokeStyle = '#222'; ctx.lineWidth = 2*s;
+            ctx.strokeRect(-c.w/2, -c.h/2, c.w, c.h);
+            ctx.beginPath();
+            for(let i=-c.w/2 + 4*s; i<c.w/2; i+=4*s) { ctx.moveTo(i, -c.h/2); ctx.lineTo(i, c.h/2); }
+            ctx.stroke();
+            if(Math.random() > 0.5) { ctx.fillStyle='#999'; ctx.beginPath(); ctx.arc(0, 3*s, 2*s, 0, Math.PI*2); ctx.fill(); }
+            ctx.restore();
+        });
+
+        ctx.strokeStyle = '#111'; ctx.lineWidth = 1.5*s;
+        this.chains.forEach(ch => {
+            ctx.beginPath(); ctx.moveTo(ch.x, ch.y);
+            ctx.quadraticCurveTo(ch.x + 5*s, ch.y + ch.len/2, ch.x, ch.y + ch.len);
+            ctx.stroke();
+            ctx.beginPath(); ctx.arc(ch.x, ch.y + ch.len, 2*s, 0, Math.PI, false); ctx.stroke();
+        });
+
+        this.shelves.forEach(sObj => { ctx.save(); ctx.translate(sObj.x, sObj.y); ctx.rotate(sObj.rot); ctx.fillStyle = '#2d1e18'; ctx.fillRect(-sObj.w/2, -sObj.h/2, sObj.w, sObj.h); ctx.fillStyle = '#1a100c'; ctx.fillRect(-sObj.w/2, -sObj.h/2 + 3*s, sObj.w, 1*s); ctx.restore(); });
+        this.debris.filter(d => d.type === 'furniture').forEach(d => { ctx.fillStyle = '#2a1a15'; ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(d.rot); ctx.fillRect(-d.size/2, -d.size/2, d.size, d.size); ctx.restore(); });
+        
+        this.banners.forEach(b => {
+            ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(b.angle);
+            let col = b.colorVar > 0.5 ? '#511' : '#333';
+            ctx.fillStyle = col;
+            ctx.beginPath();
+            ctx.moveTo(-b.width/2, 0);
+            ctx.lineTo(b.width/2, 0);
+            ctx.lineTo(b.width/2, b.len - Math.random()*10*s);
+            ctx.lineTo(0, b.len);
+            ctx.lineTo(-b.width/2, b.len - Math.random()*10*s);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = '#222'; ctx.fillRect(-b.width/2 - 2*s, -2*s, b.width + 4*s, 4*s);
+            ctx.restore();
+        });
+
+        if(this.stairs) { let st = this.stairs; ctx.fillStyle = '#050505'; ctx.fillRect(st.x-15*s, st.y-15*s, 30*s, 30*s); ctx.strokeStyle = '#333'; ctx.lineWidth = 2*s; ctx.beginPath(); for(let i=0; i<30*s; i+=6*s) { ctx.moveTo(st.x-15*s, st.y-15*s+i); ctx.lineTo(st.x+15*s, st.y-15*s+i); } ctx.stroke(); }
+        this.chests.forEach(c => { ctx.fillStyle = '#333'; ctx.fillRect(c.x-8*s, c.y-6*s, 16*s, 12*s); ctx.strokeStyle = '#554422'; ctx.strokeRect(c.x-8*s, c.y-6*s, 16*s, 12*s); });
+
+        this.wallTorches.forEach(t => {
+            ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(t.angle);
+            ctx.fillStyle = '#333'; ctx.fillRect(-2*s, -2*s, 4*s, 4*s); 
+            ctx.strokeStyle = '#422'; ctx.lineWidth = 2*s; ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-10*s, 0); ctx.stroke();
+            ctx.restore();
+        });
+    },
+
+    advance: function() {
+        if (this.currentIdx < this.rooms.length - 1) { 
+            this.currentIdx++;
+            if(!this.history.includes(this.currentIdx)) this.history.push(this.currentIdx);
+        }
+    },
+
+    reset: function() {
+        this.generatePath();
+    },
+
+    loop: function(timestamp) {
+        if (!this.ctx) return;
+        this.update();
+        this.draw();
+        requestAnimationFrame((t) => this.loop(t));
+    },
+
+    update: function() {
+        let s = this.scale;
+        this.playerState.idleTick += 0.03; 
+
+        // BEWEGUNG
+        if (this.currentIdx < this.rooms.length - 1) {
+            let targetRoom = this.rooms[this.currentIdx + 1];
+            let dx = targetRoom.x - this.playerPos.x;
+            let dy = targetRoom.y - this.playerPos.y;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            
+            let speed = 0.12 * s; 
+
+            if (dist > speed) {
+                this.playerPos.x += (dx / dist) * speed;
+                this.playerPos.y += (dy / dist) * speed;
+                this.playerState.targetAngle = Math.atan2(dy, dx);
+            } else {
+                this.advance();
+            }
+        }
+
+        let px = this.playerPos.x; 
+        let py = this.playerPos.y;
+
+        // Natural Motion
+        let diff = this.playerState.targetAngle - this.playerState.angle;
+        while (diff <= -Math.PI) diff += Math.PI*2;
+        while (diff > Math.PI) diff -= Math.PI*2;
+        this.playerState.angle += diff * 0.02;
+
+        let searchSway = Math.sin(this.playerState.idleTick * 0.5) * 0.3 + Math.sin(this.playerState.idleTick * 1.3) * 0.1;
+        
+        if (this.playerState.combatTimer > 0 && this.combatEnemy) {
+            let en = this.combatEnemy;
+            this.playerState.targetAngle = Math.atan2(en.y, en.x);
+             let combatDiff = this.playerState.targetAngle - this.playerState.angle;
+             while (combatDiff <= -Math.PI) combatDiff += Math.PI*2;
+             while (combatDiff > Math.PI) combatDiff -= Math.PI*2;
+             this.playerState.angle += combatDiff * 0.08;
+             searchSway = 0; 
+        }
+
+        // --- KAMPF ---
+        if (this.playerState.combatTimer > 0) {
+            this.playerState.combatTimer--;
+            
+            if(!this.combatEnemy) { 
+                let scaleVar = 0.7 + Math.random() * 0.8; 
+                let speedFactor = (0.1 / scaleVar) * (0.8 + Math.random()*0.4); 
+                
+                this.combatEnemy = { 
+                    x: 60*s, y: 0, 
+                    targetX: 60*s, targetY: 0, 
+                    state: 'circling',
+                    size: (7 * s) * scaleVar, 
+                    speedBase: speedFactor
+                }; 
+            }
+            
+            let en = this.combatEnemy;
+
+            if(Math.random() < 0.2) { 
+                this.magicSparks.push({
+                    x: px + en.x + (Math.random()-0.5)*20*s,
+                    y: py + en.y + (Math.random()-0.5)*20*s,
+                    vx: (Math.random()-0.5)*2,
+                    vy: (Math.random()-0.5)*2 - 1, 
+                    life: 20 + Math.random()*20,
+                    color: Math.random()>0.5 ? '#f00' : '#f50' 
+                });
+            }
+
+            if(en.state === 'attacking') {
+                en.targetX = 0; en.targetY = 0;
+                let atkSpd = en.speedBase * 3; 
+                en.x += (en.targetX - en.x) * atkSpd; en.y += (en.targetY - en.y) * atkSpd;
+                if(Math.abs(en.x) < 10*s && Math.abs(en.y) < 10*s) {
+                    en.state = 'retreating'; let a = Math.random() * Math.PI * 2;
+                    en.targetX = Math.cos(a) * 70*s; en.targetY = Math.sin(a) * 70*s;
+                }
+            } else {
+                en.x += (en.targetX - en.x) * en.speedBase; en.y += (en.targetY - en.y) * en.speedBase;
+                if(Math.random() < 0.02) { let a = Math.random() * Math.PI * 2; en.targetX = Math.cos(a) * 60*s; en.targetY = Math.sin(a) * 60*s; en.state = 'circling'; }
+                if(Math.random() < 0.015 && en.state === 'circling') { en.state = 'attacking'; }
+            }
+            if(this.playerState.attackLunge > 0) this.playerState.attackLunge -= 2;
+            if(Math.random() < 0.02 && this.playerState.attackLunge <= 0) { this.playerState.attackLunge = 15; }
+            
+        } else {
+            this.combatEnemy = null;
+            this.playerState.attackLunge = 0;
+            if(Math.random() < 0.0008) { this.playerState.combatTimer = 200 + Math.random() * 100; }
+        }
+
+        this.minions.forEach(m => { 
+            m.angle += m.speed; 
+            m.x = m.baseX + Math.cos(m.angle)*(m.radius*0.6); 
+            m.y = m.baseY + Math.sin(m.angle)*(m.radius*0.6); 
+        });
+        
+        // RATTEN UPDATE (Flee Behavior)
+        this.rats.forEach(r => {
+            let dx = r.x - px;
+            let dy = r.y - py;
+            let dist = Math.sqrt(dx*dx + dy*dy);
+            let scareDist = 80 * s;
+
+            if (dist < scareDist) {
+                // FLUCHT
+                let dirX = dx / dist;
+                let dirY = dy / dist;
+                r.vx += dirX * 1.5 * s;
+                r.vy += dirY * 1.5 * s;
+            } else {
+                // IDLE
+                if(Math.random() < 0.05) {
+                    r.vx += (Math.random()-0.5) * 0.5 * s;
+                    r.vy += (Math.random()-0.5) * 0.5 * s;
+                }
+            }
+            r.vx *= 0.85; r.vy *= 0.85;
+            r.x += r.vx; r.y += r.vy;
+        });
+
+        this.particles.forEach(p => { p.x+=p.vx; p.y+=p.vy; if(p.x<0||p.x>this.canvas.width)p.x=p.x<0?this.canvas.width:0; if(p.y<0||p.y>this.canvas.height)p.y=p.y<0?this.canvas.height:0; });
+        this.ash.forEach(a => { a.x+=a.vx; a.y+=a.vy; a.rot+=0.02; if(a.x<0||a.x>this.canvas.width)a.x=a.x<0?this.canvas.width:0; if(a.y<0||a.y>this.canvas.height)a.y=a.y<0?this.canvas.height:0; });
+        
+        this.magicSparks = this.magicSparks.filter(sp => sp.life > 0);
+        this.magicSparks.forEach(sp => {
+            sp.x += sp.vx; sp.y += sp.vy; sp.life--;
+        });
+        
+        this.drawAngle = this.playerState.angle + searchSway;
+    },
+
+    draw: function() {
+        let ctx = this.ctx; let cvs = this.canvas; 
+        let s = this.scale;
+        
+        let cx = this.playerPos.x;
+        let cy = this.playerPos.y;
+
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+
+        // 1. Hintergrund & Statische Welt
+        ctx.fillStyle = '#020202'; ctx.fillRect(0,0, cvs.width, cvs.height);
+        ctx.drawImage(this.cacheCanvas, 0, 0);
+
+        // Entities
+        ctx.save();
+        
+        this.rats.forEach(r => { 
+            ctx.fillStyle = '#444'; 
+            ctx.beginPath(); ctx.arc(r.x, r.y, 3*s, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(r.x+1*s, r.y-1*s, 0.5*s, 0, Math.PI*2); ctx.fill(); 
+        });
+
+        // MINIONS
+        this.minions.forEach((m, i) => { 
+            if (m.roomIdx > this.currentIdx + 2) return; 
+            let gray = 50 + (i % 3) * 20; 
+            ctx.fillStyle = `rgb(${gray},20,20)`; 
+            ctx.beginPath(); ctx.ellipse(m.x, m.y, 6*s, 4*s, m.angle, 0, Math.PI*2); ctx.fill(); 
+            ctx.fillStyle = '#f00'; ctx.beginPath(); ctx.arc(m.x + Math.cos(m.angle)*3*s, m.y + Math.sin(m.angle)*3*s, 1*s, 0, Math.PI*2); ctx.fill();
+
+            if(m.hasTorch) {
+                ctx.save(); ctx.translate(m.x, m.y); ctx.rotate(m.angle);
+                ctx.strokeStyle = '#532'; ctx.lineWidth = 2*s;
+                ctx.beginPath(); ctx.moveTo(0, 3*s); ctx.lineTo(8*s, 6*s); ctx.stroke(); 
+                ctx.fillStyle = 'rgba(255, 100, 0, 1.0)'; 
+                ctx.beginPath(); ctx.arc(8*s, 6*s, 2.5*s, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
+        });
+
+        // COMBAT ENEMY
+        if(this.playerState.combatTimer > 0 && this.combatEnemy) {
+            let en = this.combatEnemy;
+            ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(en.x, en.y, en.size, 0, Math.PI*2); ctx.fill();
+            ctx.fillStyle = 'rgba(200,200,200,0.8)'; 
+            ctx.beginPath(); ctx.arc(en.x - en.size*0.3, en.y - en.size*0.2, en.size*0.2, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(en.x + en.size*0.3, en.y - en.size*0.2, en.size*0.2, 0, Math.PI*2); ctx.fill();
+            ctx.shadowColor = '#000'; ctx.shadowBlur = 15;
+            ctx.strokeStyle = '#222'; ctx.lineWidth = 1*s; ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+        
+        ctx.globalCompositeOperation = 'lighter'; 
+        ctx.fillStyle = 'rgba(200, 200, 200, 0.3)'; 
+        this.particles.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill(); });
+        
+        ctx.globalCompositeOperation = 'source-over'; 
+        ctx.fillStyle = 'rgba(40, 40, 40, 0.9)'; 
+        this.ash.forEach(a => { ctx.save(); ctx.translate(a.x, a.y); ctx.rotate(a.rot); ctx.fillRect(-a.size/2, -a.size/2, a.size, a.size); ctx.restore(); });
+
+        ctx.restore(); 
+
+        // Licht & Nebel
+        if (this.rooms.length > 0) {
+            
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = 'rgba(0,0,0,0.75)'; // Fog 75%
+            ctx.fillRect(0, 0, cvs.width, cvs.height);
+
+            ctx.globalCompositeOperation = 'destination-out';
+            let flicker = (Math.random() * 10) - 5; 
+            let radius = (180 + flicker) * s; 
+            
+            // Spieler
+            let lightGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+            lightGrad.addColorStop(0, 'rgba(0,0,0,1)'); lightGrad.addColorStop(1, 'rgba(0,0,0,0)');      
+            ctx.fillStyle = lightGrad; ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI*2); ctx.fill();
+
+            // Minions mit Fackeln (kleines Licht)
+            this.minions.forEach(m => {
+                if(m.hasTorch && m.roomIdx <= this.currentIdx + 2) {
+                    let mr = (35 + Math.random() * 5) * s; // Klein
+                    let tx = m.x + Math.cos(m.angle)*8*s - Math.sin(m.angle)*6*s;
+                    let ty = m.y + Math.sin(m.angle)*8*s + Math.cos(m.angle)*6*s;
+                    let mg = ctx.createRadialGradient(tx, ty, 0, tx, ty, mr);
+                    mg.addColorStop(0, 'rgba(0,0,0,1)'); mg.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(tx, ty, mr, 0, Math.PI*2); ctx.fill();
+                }
+            });
+
+            // Wandfackeln (großes Licht)
+            this.wallTorches.forEach(t => {
+                let tr = (130 + (Math.random() * 5)) * s; // Groß
+                let tg = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, tr);
+                tg.addColorStop(0, 'rgba(0,0,0,1)'); tg.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = tg; ctx.beginPath(); ctx.arc(t.x, t.y, tr, 0, Math.PI*2); ctx.fill();
+            });
+
+            this.history.forEach(idx => { let r = this.rooms[idx]; let gHist = ctx.createRadialGradient(r.x, r.y, 0, r.x, r.y, r.r + 20*s); gHist.addColorStop(0, 'rgba(0,0,0,0.4)'); gHist.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gHist; ctx.beginPath(); ctx.arc(r.x, r.y, r.r+20*s, 0, Math.PI*2); ctx.fill(); });
+
+            // Volume Light
+            ctx.globalCompositeOperation = 'source-over';
+            let volIntensity = 0.06 + (Math.random() * 0.02); 
+            
+            let volGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+            volGrad.addColorStop(0, `rgba(255, 120, 50, ${volIntensity})`); 
+            volGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = volGrad; ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI*2); ctx.fill();
+
+            this.wallTorches.forEach(t => {
+                let tr = (130 + (Math.random() * 5)) * s;
+                let tv = ctx.createRadialGradient(t.x, t.y, 0, t.x, t.y, tr);
+                tv.addColorStop(0, `rgba(255, 80, 20, ${volIntensity})`); tv.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = tv; ctx.beginPath(); ctx.arc(t.x, t.y, tr, 0, Math.PI*2); ctx.fill();
+            });
+
+            this.minions.forEach(m => {
+                if(m.hasTorch && m.roomIdx <= this.currentIdx + 2) {
+                    let tx = m.x + Math.cos(m.angle)*8*s - Math.sin(m.angle)*6*s;
+                    let ty = m.y + Math.sin(m.angle)*8*s + Math.cos(m.angle)*6*s;
+                    let mr = (35 + Math.random() * 5) * s;
+                    let mv = ctx.createRadialGradient(tx, ty, 0, tx, ty, mr);
+                    mv.addColorStop(0, `rgba(255, 100, 20, ${volIntensity*1.5})`); mv.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = mv; ctx.beginPath(); ctx.arc(tx, ty, mr, 0, Math.PI*2); ctx.fill();
+                }
+            });
+
+            ctx.globalCompositeOperation = 'lighter';
+            this.magicSparks.forEach(sp => {
+                ctx.fillStyle = sp.color;
+                ctx.globalAlpha = sp.life / 30; 
+                ctx.beginPath(); ctx.arc(sp.x, sp.y, (1 + Math.random()*2)*s, 0, Math.PI*2); ctx.fill();
+                ctx.globalAlpha = 1.0;
+            });
+            
+            // FACKEL KERNE
+            this.minions.forEach(m => {
+                if(m.hasTorch && m.roomIdx <= this.currentIdx + 2) {
+                    let tx = m.x + Math.cos(m.angle)*8*s - Math.sin(m.angle)*6*s;
+                    let ty = m.y + Math.sin(m.angle)*8*s + Math.cos(m.angle)*6*s;
+                    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(tx, ty, 2*s, 0, Math.PI*2); ctx.fill();
+                    ctx.fillStyle = '#ff0'; ctx.beginPath(); ctx.arc(tx, ty, 4*s, 0, Math.PI*2); ctx.fill();
+                }
+            });
+
+            this.wallTorches.forEach(t => {
+                ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(t.x, t.y, 2*s, 0, Math.PI*2); ctx.fill();
+                ctx.fillStyle = '#ff0'; ctx.beginPath(); ctx.arc(t.x, t.y, 4*s, 0, Math.PI*2); ctx.fill();
+            });
+
+            this.puddles.forEach(p => { let dist = Math.sqrt((p.x-cx)*(p.x-cx) + (p.y-cy)*(p.y-cy)); if(dist < radius) { let alpha = 1 - (dist/radius); ctx.fillStyle = `rgba(180, 50, 50, ${alpha * 0.3})`; ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot); ctx.beginPath(); ctx.ellipse(0, 0, p.rx*0.7, p.ry*0.7, 0, 0, Math.PI*2); ctx.fill(); ctx.restore(); } });
+
+            // CHARAKTER
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.save(); ctx.translate(cx, cy);
+
+            ctx.rotate(this.drawAngle); 
+            if(this.playerState.attackLunge > 0) ctx.translate(this.playerState.attackLunge * 0.5 * s, 0);
+            
+            let breath = Math.sin(this.playerState.idleTick) * 0.3 * s;
+            ctx.fillStyle = '#222'; ctx.beginPath(); ctx.ellipse(0, 0, 7*s + breath, 5*s + breath, 0, 0, Math.PI*2); ctx.fill(); 
+            ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(0, 0, 3.5*s, 0, Math.PI*2); ctx.fill(); 
+            
+            ctx.strokeStyle = '#333'; ctx.lineWidth = 2*s; ctx.beginPath(); ctx.moveTo(4*s, 2*s); ctx.lineTo(10*s, 5*s); ctx.stroke();
+            ctx.strokeStyle = '#532'; ctx.beginPath(); ctx.moveTo(10*s, 5*s); ctx.lineTo(16*s, 2*s); ctx.stroke();
+            
+            let flameSz = (3 + Math.random() * 2)*s; ctx.fillStyle = `rgba(255, ${100 + Math.random()*50}, 0, 0.9)`; ctx.beginPath(); ctx.arc(16*s, 2*s, flameSz, 0, Math.PI*2); ctx.fill();
+            
+            ctx.restore();
+        }
+    }
+};
+
+// ==========================================
+// 1. DATA (FULL INTEGRATED LORE + VISUAL COMBAT)
+// ==========================================
+const DB = {
+    stories: {
+        "intro": [
+            "The warrior princess Lilith descends into the Pig Dungeon...",
+            "It smells of ancient death and...",
+            "cooked meat.",
+            "Sanity is fading. Doom approaches."
+        ],
+        "depth_1_start": [
+            "The walls are sticky.",
+            "You hear scratching.",
+            "Something watches from the cracks."
+        ],
+        "boss": [
+            "The ground shakes violently.",
+            "A massive shadow steps forward.",
+            "The Floor Guardian has awoken!"
+        ],
+        "shop": [
+            "A small goblin sits on a crate.",
+            "'Shiny things for shiny coins?', he whispers."
+        ]
+    },
+    // LORE SNIPPETS FOR MENU
+    menu_whispers: [
+        "They say the Gold you find is cursed... but you spend it anyway.",
+        "The deeper you go, the thinner reality becomes.",
+        "Don't trust the shadows. They have teeth.",
+        "The Goblin Merchant was once a hero like you.",
+        "Doom is not a status effect. It is a promise.",
+        "The Limit Break consumes your soul, piece by piece.",
+        "Those who listen to the music too long, never leave."
+    ],
+    world: {
+        narrative: {
+            reactions: {
+                win_steel: [ 
+                    "CRUNCH! The heavy blow shatters bone and armor alike.", 
+                    "A brutal impact throws the enemy against the wall.",
+                    "Steel bites deep into muscle. Blood sprays.",
+                    "The sheer force of the strike dents their chest."
+                ],
+                win_shadow: [ 
+                    "A whisper of steel, then a fountain of red.", 
+                    "Too fast to see! A precision cut severs a tendon.",
+                    "You dance around the attack, leaving a deep gash.",
+                    "From the shadows, your blade finds the heart."
+                ],
+                win_magic: [ 
+                    "Arcane fire consumes their flesh. They scream.", 
+                    "A bolt of pure energy pierces through their defense.",
+                    "Reality cracks with a thunderous boom!",
+                    "The spell boils their blood from the inside."
+                ],
+                loss: [ 
+                    "ARGH! A jagged blade tears into your side.", 
+                    "You are thrown back, coughing blood.", 
+                    "Pain flares white-hot as the attack connects.",
+                    "Your vision blurs from the impact."
+                ],
+                parry: [ 
+                    "CLANG! Sparks fly as weapons collide.", 
+                    "Blocked at the last second!", 
+                    "Metal grinds on metal. A stalemate.",
+                    "You deflect the blow with a grunt."
+                ]
+            }
+        }
+    },
+    enemy_templates: [
+        { 
+            keywords: ["Goblin", "Orc", "Boar", "Butcher", "Pig", "Troll", "Giant"], 
+            intros: [
+                "The creature grins filthily. A stench of rancid fat fills the air.",
+                "With a grunt, the Butcher Boar shows its arsenal.",
+                "It drools with greed. A massive Orc blocks your path."
+            ],
+            moves: [
+                "It grunts filthily and readies {c1}, {c2} and {c3}.",
+                "Rotting food drips from its mouth as it swings {c1}, {c2} and {c3}.",
+                "It drools with greed. You see the flash of {c1}, {c2} and {c3}."
+            ],
+            death: "It collapses into a pile of filth, squealing one last time."
+        },
+        { 
+            keywords: ["Skeleton", "Lich", "Zombie", "Ghost", "Bone", "Ghoul", "Revenant", "Necromancer"], 
+            intros: [
+                "The temperature drops. Dry bones rattle as the Bone Lord assembles itself.",
+                "Dust swirls. A Revenant rises from a grave, empty sockets fixing on you.",
+                "A hollow clicking sound... The Skeleton King draws his weapon."
+            ],
+            moves: [
+                "His bones rattle quietly. He summons {c1}, {c2} and {c3}.",
+                "Empty sockets fixate on you. He reaches for {c1}, {c2} and {c3}.",
+                "Dust whirls up. The Lord wields {c1}, {c2} and the deadly {c3}."
+            ],
+            death: "The magic fades. The bones crumble to dust."
+        },
+        { 
+            keywords: ["Mage", "Witch", "Cultist", "Summoner", "Priest", "Seer", "Alchemist", "Warlock"], 
+            intros: [
+                "Violet light flickers. A Cult Magus is chanting forbidden syllables.",
+                "The air tastes metallic. A Dark Warlock floats above the ground.",
+                "\"Your soul is mine!\" hisses a Witch, eyes glowing with madness."
+            ],
+            moves: [
+                "Arcane energy crackles. He charges {c1}, {c2} and {c3}.",
+                "He mutters a curse and forms {c1}, {c2} and {c3}.",
+                "His eyes glow violet. He unleashes {c1}, {c2} and {c3}."
+            ],
+            death: "The body disintegrates into violet sparks."
+        },
+        { 
+            keywords: ["Bandit", "Thief", "Assassin", "Shadow", "Mercenary", "Murderer", "Spy", "Ninja"], 
+            intros: [
+                "You see nothing... until a Shadowblade steps out of your own shadow.",
+                "A metallic click. An Assassin is watching you from the ceiling.",
+                "The torches flicker. Something unseen is hunting you."
+            ],
+            moves: [
+                "He merges with the shadow and draws {c1}, {c2} and {c3}.",
+                "A metallic click. He plays with {c1}, {c2} and {c3}.",
+                "You lose sight of him briefly. He appears with {c1}, {c2} and {c3}."
+            ],
+            death: "It gasps, clutches its wound, and vanishes into the dark."
+        },
+        { 
+            keywords: ["Siren", "Minstrel", "Bard", "Song"], 
+            intros: [
+                "A haunting melody echoes through the halls. The Cursed Minstrel is playing your dirge.",
+                "The Bone Siren's ribs open like petals. She screams a silent song.",
+                "\"Dance with me...\" whispers a voice that sounds like breaking glass."
+            ],
+            moves: [
+                "Her song shatters stone. She calls {c1}, {c2} and the sighing {c3}.",
+                "The lute screams. From the strings detach {c1}, {c2} and the curse-laden {c3}.",
+                "Every note rots. His song weaves {c1}, {c2} and the last {c3}."
+            ],
+            death: "The song ends abruptly with a sickening crunch."
+        },
+        { 
+            keywords: ["Filth", "Rat", "Collector", "Junk", "Trash", "Slime", "Roach", "Mold"], 
+            intros: [
+                "A mountain of trash begins to move. The Filth Collector laughs gurglingly.",
+                "Millions of insects crawl over a shape. The Maggot Host waves at you.",
+                "The floor is covered in slime. Something drags itself towards you."
+            ],
+            moves: [
+                "He scratches in the dirt and throws {c1}, {c2} and the stinking {c3} at you.",
+                "From his coat crawl {c1}, {c2} and the foul {c3}.",
+                "He laughs gurglingly. His pockets spew {c1}, {c2} and {c3}."
+            ],
+            death: "It dissolves into a puddle of toxic sludge."
+        },
+        { 
+            keywords: ["Demon", "Abyss", "Devil", "Hell", "Succubus", "Imp", "Corruption"], 
+            intros: [
+                "Sulphur burns your nose. An Abyss Lord tears a hole in reality.",
+                "The shadows boil. A Hellspawn has found its way here.",
+                "\"CHAOS REIGNS!\" roars a demon, skin burning with black fire."
+            ],
+            moves: [
+                "Sulphur smell fills the air. He laughs and shows {c1}, {c2} and {c3}.",
+                "Black flames envelop {c1}, {c2} and {c3}.",
+                "From the abyss he pulls {c1}, {c2} and {c3}."
+            ],
+            death: "With a roar, it is dragged back into the inferno."
+        },
+        { 
+            keywords: ["Knight", "Guardian", "Paladin", "Barbarian", "Warrior", "Soldier", "Golem", "Templar"], 
+            intros: [
+                "Heavy armor clatters. A Dark Guardian stands motionless.",
+                "A Black Templar raises his sword in a mocking salute.",
+                "The ground shakes as an Armored Golem approaches."
+            ],
+            moves: [
+                "His armor clatters. He lifts {c1}, {c2} and {c3}.",
+                "With military precision, he draws {c1}, {c2} and {c3}.",
+                "He salutes mockingly and attacks with {c1}, {c2} and {c3}."
+            ],
+            death: "The armor falls apart, empty inside."
+        },
+        {
+            keywords: ["Wolf", "Beast", "Bear", "Hellhound", "Chimera", "Hydra"],
+            intros: [
+                "A low growl vibrates in your chest. The Alpha Beast is here.",
+                "Foam drips from the jaws of a Hellhound.",
+                "Wild eyes stare from the darkness."
+            ],
+            moves: [
+                "The beast growls deeply. It gets ready with {c1}, {c2} and {c3}.",
+                "Foam drips from its jowls. It charges with {c1}, {c2} and {c3}.",
+                "Wild eyes stare at you. It instinctively uses {c1}, {c2} and {c3}."
+            ],
+            death: "It whimpers and collapses, tongue hanging out."
+        }
+    ],
+    generic_intros: [
+        "A shadow moves in the corner. The enemy engages!",
+        "You hear breathing behind you. Turn around!",
+        "Something wicked this way comes."
+    ],
+    generic_moves: [
+        "The enemy circles you, preparing {c1}, {c2} and {c3}.",
+        "With a hateful stare, it readies {c1}, {c2} and {c3}.",
+        "The dungeon air gets colder. It brings forth {c1}, {c2} and {c3}."
+    ],
+    archetypes: {
+        "Steel-Shadow": ["Ninja", "Assassin", "Ronin", "Shadowblade"], 
+        "Steel-Magic": ["Paladin", "Battle Mage", "Spellblade", "Black Templar"],
+        "Shadow-Steel": ["Bandit King", "Slayer", "Butcher Boar"], 
+        "Shadow-Magic": ["Warlock", "Necromancer", "Cultist", "Bone Siren", "Cursed Minstrel"],
+        "Magic-Steel": ["Golem", "Construct", "Armored Knight"], 
+        "Magic-Shadow": ["Lich", "Void Walker", "Filth Collector", "Abyss Lord"]
+    },
+    cards: {
+        base_weapons: {
+            "Steel": ["Sword", "Axe", "Hammer", "Mace", "Spear", "Bastard Sword", "Cleaver"],
+            "Shadow": ["Dagger", "Bow", "Crossbow", "Scythe", "Sickle", "Knife", "Claw"],
+            "Magic": ["Wand", "Staff", "Orb", "Tome", "Crystal", "Rune", "Lightning"]
+        },
+        specials: [
+            {"name": "Shield & Heal", "type": "Healing", "val": 15}, {"name": "Time Bomb", "type": "Bomb", "timer": 3},
+            {"name": "Doom Bomb", "type": "Bomb", "timer": 2}, {"name": "Pure Madness", "type": "Chaos", "val": 5},
+            {"name": "Greedy Goblin", "type": "Claw", "val": 0}, {"name": "Rusty Chain", "type": "Chain", "val": 0},
+            {"name": "Dark Potion", "type": "Healing", "val": 15}, {"name": "FROZEN", "type": "Potion", "val": 0},
+            {"name": "Chaos Shard", "type": "Chaos", "val": 8}, {"name": "Hellfire Grenade", "type": "Bomb", "timer": 1},
+            {"name": "Steel Reflex", "type": "Reflex", "val": 5}, {"name": "Shadow Reflex", "type": "Reflex", "val": 5}
+        ]
+    },
+    classes: {
+        "Warrior": { max_hp: 120, deck: ["Shield & Heal", "Iron Broadsword", "Heavy Warhammer", "Steel Lance", "Spine Longbow", "Shadow Dagger", "Ice Shard", "Fireball", "Steel Reflex", "Rusty Chain"] },
+        "Rogue": { max_hp: 90, deck: ["Shield & Heal", "Shadow Blade", "Poison Needle", "Hidden Knife", "Spine Longbow", "Widow Crossbow", "Iron Sword", "Ice Shard", "Greedy Goblin", "Shadow Reflex"] },
+        "Mage": { max_hp: 80, deck: ["Shield & Heal", "Scorching Fireball", "Lightning Bolt", "Ice Crystal", "Arcane Tome", "Blood Nova", "Iron Dagger", "Shadow Arrow", "Time Bomb", "Pure Madness"] }
+    }
+};
+
+// ==========================================
+// 2. LOGIC
+// ==========================================
+const MAX_DECK_SIZE = 10;
+
+class Card {
+    constructor(name, symbols, dmg, mult=1, heal=0, p_dmg=0, p_leech=false, bomb=-1, shack=false, steal=false, chaos=false, burn=false, freeze=false) {
+        this.name = name; this.symbols = symbols; this.base_dmg = dmg;
+        this.mult = mult; this.base_heal = heal;
+        this.pass_dmg = p_dmg; this.pass_leech = p_leech;
+        this.bomb_timer = bomb; this.is_shackle = shack; this.is_steal = steal; this.is_chaos = chaos;
+        this.is_burn = burn; this.is_freeze = freeze;
+
+        if (name.includes("Burning") || name.includes("Fire") || name.includes("Hell")) this.is_burn = true;
+        if (name.includes("Frozen") || name.includes("Ice") || name.includes("Blizzard")) this.is_freeze = true;
+        if (symbols.includes("Chaos") || name.includes("Madness")) this.is_chaos = true;
+        if (symbols.includes("Claw") || name.includes("Greedy")) this.is_steal = true;
+        
+        // Cursed Logic
+        if (name.includes("Cursed")) { 
+            this.mult = 6; // High damage
+            this.pass_dmg = -10; // Hurts player in hand
+            this.is_chaos = true;
+        }
+
+        this.level = 0; this.temp_status = "normal"; this.hand_turns = 0;
+        this.selected = false; this.uuid = Math.random().toString(36).substr(2, 9);
+    }
+    
+    applyDrawLuck() {
+        this.temp_status = "normal"; this.hand_turns = 0;
+        if (this.base_dmg > 0) {
+            let r = Math.random();
+            if (r < 0.15) this.temp_status = "extreme"; else if (r < 0.40) this.temp_status = "strong";
+            else if (r < 0.60) this.temp_status = "weak"; else if (r < 0.90) this.temp_status = "growing";
+        }
+    }
+    tickHandTurn() { if (this.temp_status === "growing") this.hand_turns++; }
+    
+    get total_damage() {
+        let d = (this.base_dmg * this.mult) + this.level;
+        if (this.base_dmg <= 0) return 0;
+        if (this.temp_status === "extreme") d = Math.floor(d * 3);
+        else if (this.temp_status === "strong") d = Math.floor(d * 1.5);
+        else if (this.temp_status === "weak") d = Math.floor(d * 0.5);
+        else if (this.temp_status === "growing") d += (this.hand_turns * 4);
+        return Math.max(1, d);
+    }
+    
+    get heal_val() { return this.base_heal > 0 ? this.base_heal + this.level : 0; }
+    isPassive() { return this.pass_dmg !== 0 || this.pass_leech || this.bomb_timer > -1 || this.is_shackle; }
+    isHeal() { return this.base_heal > 0; }
+    isDouble() { return this.symbols.length > 1; }
+    levelUp() { if (!this.isPassive() && !this.is_steal && !this.is_chaos) this.level++; }
+    reset() { this.level = 0; this.selected = false; this.temp_status = "normal"; this.hand_turns = 0; if (this.name.includes("Time Bomb")) this.bomb_timer = 3; }
+    tickBomb() { if (this.bomb_timer > 0) { this.bomb_timer--; return this.bomb_timer === 0; } return false; }
+    
+    getRarityClass() {
+        if (this.name.includes("Cursed")) return "r-cursed";
+        if (this.mult >= 5) return "r-gold"; if (this.mult >= 3) return "r-violet";
+        if (this.is_chaos) return "r-red"; if (this.isHeal() || this.isPassive()) return "r-green";
+        if (this.symbols[0] === "Magic") return "r-blue"; 
+        if (this.symbols[0] === "Shadow") return "r-violet";
+        return "";
+    }
+
+    getColoredName() {
+        let col = "c-text";
+        if (this.name.includes("Cursed")) col = "c-chaos";
+        else if (this.mult >= 5) col = "c-gold"; else if (this.mult >= 3) col = "c-violet";
+        else if (this.is_chaos) col = "c-chaos"; else if (this.isHeal() || this.isPassive()) col = "c-green";
+        else if (this.symbols[0] == "Steel") col = "c-cyan";
+        else if (this.symbols[0] == "Shadow") col = "c-violet";
+        else if (this.symbols[0] == "Magic") col = "c-blue";
+        return `<span class='${col} bold'>[${this.name}]</span>`;
+    }
+    
+    getColoredElement() {
+        return this.symbols.map(s => {
+            let sC = s=="Steel"?"c-cyan" : s=="Shadow"?"c-violet" : s=="Magic"?"c-blue" : (s=="Chaos"?"c-chaos":"c-grey");
+            return `<span class='${sC} bold'>${s.toUpperCase()}</span>`;
+        }).join(" / ");
+    }
+
+    getHtml() {
+        let stat = this.temp_status=="extreme"?" <b class='c-red'>EXTREME</b>" : (this.temp_status=="growing"?" <b class='c-green'>CHARGING</b>":"");
+        if(this.temp_status=="strong") stat=" <b class='c-warn'>STRONG</b>"; if(this.temp_status=="weak") stat=" <b class='c-grey'>WEAK</b>";
+        
+        let val = this.base_dmg > 0 ? ` DMG:${this.total_damage}` : (this.base_heal > 0 ? ` HEAL:${this.heal_val}` : "");
+        if (this.is_steal) val = " <span class='c-violet'>STEAL ENEMY</span>";
+        if (this.name.includes("Cursed")) val += " <span class='c-doom'>SELF-HARM</span>";
+
+        let lvl = this.level > 0 ? ` <span class='c-blue'>+${this.level}</span>` : "";
+        let fx = "";
+        if(this.is_burn) fx += " <span class='c-burn'>[BURN]</span>";
+        if(this.is_freeze) fx += " <span class='c-freeze'>[FREEZE]</span>";
+        
+        return `<div>${this.getColoredName()}${lvl}${fx}${stat}</div><div><small>${this.getColoredElement()} ${val}</small></div>`;
+    }
+    
+    getSellPrice() {
+        let p = 10;
+        if (this.name.includes("Cursed")) return 150; 
+        if(this.mult >= 5) p = 80; else if(this.mult >= 3) p = 40;
+        if(this.is_chaos || this.is_steal) p += 20;
+        if(this.base_heal > 0) p += 15;
+        return p;
+    }
+}
+
+const Game = {
+    state: "START", prev: "MENU",
+    player: { class: "Warrior", hp: 120, max_hp: 120, limit: 0, depth: 1, doom: 0, gold: 0, master_deck: [], deck: [], hand: [], discard: [], collection: [], buff: 0, leech: false, shack: false, burn: 0, limit_dmg: 3, stats: { kills: 0, runs: 0, high_depth: 1 } },
+    enemy: { name: "", hp: 0, max_hp: 0, deck: [], hand: [], discard: [], burn: 0, frozen: false },
+    logEl: document.getElementById('log-container'),
+    logQueue: [],
+    rewardOptions: [],
+    sell_mode: false,
+    isTyping: false,
+    limit_active: false,
+    limit_hits: 0,
+    fontSize: 15,
+    
+    init: function() {
+        DungeonMap.init(); 
+        if (localStorage.getItem('inf_v86_save')) { this.load(); this.enterGame(); }
+        else {
+            this.adjustFontSize(15);
+            document.getElementById('start-screen').style.display = 'flex';
+        }
+    },
+
+    adjustFontSize: function(val) {
+        this.fontSize = val;
+        document.body.style.fontSize = val + "px";
+    },
+
+    enterClassSelection: function() {
+        document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('class-screen').style.display = 'flex';
+        AudioEngine.play();
+    },
+
+    selectClass: function(cls) {
+        this.player.class = cls;
+        let cData = DB.classes[cls];
+        this.player.max_hp = cData.max_hp; this.player.hp = cData.max_hp;
+        this.player.gold = 0;
+        this.player.doom = 0;
+        this.player.limit_dmg = 3;
+        this.player.master_deck = [...cData.deck];
+        this.player.collection = [];
+        this.player.stats.runs++;
+        this.save(); this.enterGame();
+    },
+
+    enterGame: function() {
+        document.getElementById('class-screen').style.display = 'none';
+        document.getElementById('start-screen').style.display = 'none';
+        this.state = "MENU"; this.render();
+    },
+
+    createCard: function(name) {
+        let m = 1; let n = name;
+        if (n.includes("Divine ") || n.includes("DEADLY ")) m = 5; else if (n.includes("Enchanted ") || n.includes("Brutal ")) m = 3;
+        ["Divine ", "Enchanted ", "Brutal ", "DEADLY "].forEach(x => n = n.replace(x, "")); n = n.trim();
+
+        let spec = DB.cards.specials.find(x => x.name === n);
+        if (spec) {
+            let c = new Card(name, [spec.type], 0);
+            if (spec.type=="Healing") c.base_heal = spec.val; if (spec.type=="Bomb") c.bomb_timer = spec.timer;
+            if (spec.type=="Chaos") { c.is_chaos=true; c.base_dmg=spec.val; } 
+            if (spec.type=="Claw") { c.is_steal=true; c.symbols=["Shadow"]; }
+            if (spec.type=="Chain") c.is_shackle=true;
+            
+            if (spec.type=="Reflex" || n.includes("Reflex")) { 
+                c.base_dmg = 5; 
+                c.symbols = ["Steel", "Shadow"]; 
+                if(n.includes("Magic")) c.symbols = ["Magic", "Steel"];
+            }
+            if (spec.type=="Technique" || n.includes("Maneuver")) { c.base_dmg = 6; c.symbols = ["Steel", "Shadow"]; }
+            return c;
+        }
+
+        let type = "Steel"; 
+        if (n.includes("Shadow") || n.includes("Bow") || n.includes("Dagger") || n.includes("Needle")) type = "Shadow";
+        else if (n.includes("Magic") || n.includes("Fire") || n.includes("Ice") || n.includes("Bolt") || n.includes("Tome")) type = "Magic";
+        
+        let dmg = (type == "Magic") ? 9 : (type == "Steel" ? 7 : 6);
+        return new Card(name, [type], dmg, m);
+    },
+
+    handleInput: function() {
+        if (this.isTyping && !this.skipTyping) return;
+        if (this.state === "MENU") this.startRun();
+        else if (this.state === "EXPLORE") this.processEvent();
+        else if (this.state === "FIGHT") this.resolve();
+        else if (this.state === "LOOT") this.nextFight();
+        else if (this.state === "REWARD") {}
+        else if (this.state === "SHOP") { this.state="LOOT"; this.render(); }
+        else if (this.state === "DECK") { 
+            this.state = (this.prev === "SHOP") ? "SHOP" : "MENU"; 
+            this.save(); this.render();
+        }
+        else if (this.state === "GAMEOVER") { localStorage.removeItem('inf_v86_save'); location.reload(); }
+        else if (this.state === "LIMIT") this.executeLimit();
+        this.render();
+    },
+
+    startRun: function() { 
+        this.fightIdx = 0; 
+        DungeonMap.reset(); 
+        this.player.depth = 1; 
+        this.player.doom = 0;
+        this.playStory("intro", () => {
+            this.log("Entering Dungeon Abyss...", "c-grey bold"); 
+            this.nextFight(); 
+        });
+    },
+
+    playStory: function(key, callback) {
+        let lines = DB.stories[key];
+        if (!lines) { callback(); return; } 
+        let screen = document.getElementById('story-screen');
+        let textContainer = document.getElementById('story-text-container');
+        let btn = document.getElementById('story-continue-btn');
+        let skipBtn = document.getElementById('skip-btn');
+        
+        screen.style.display = 'flex'; textContainer.innerHTML = "";
+        let lineIdx = 0;
+        let timer = null;
+        let isTypingLine = false;
+
+        const stopAll = () => {
+            if(timer) clearInterval(timer);
+            screen.style.display = 'none';
+            callback();
+        };
+
+        const showLine = () => {
+            if (lineIdx >= lines.length) { stopAll(); return; }
+            let p = document.createElement('div'); p.style.marginBottom = "15px"; textContainer.appendChild(p);
+            let txt = lines[lineIdx]; 
+            let i = 0;
+            isTypingLine = true;
+            timer = setInterval(() => { 
+                p.textContent += txt[i]; i++; 
+                if (i >= txt.length) { 
+                    clearInterval(timer); 
+                    timer = null; 
+                    isTypingLine = false; 
+                } 
+            }, 10);
+        };
+        showLine();
+        btn.onclick = () => { 
+            if (isTypingLine) {
+                if(timer) clearInterval(timer);
+                textContainer.lastChild.textContent = lines[lineIdx];
+                isTypingLine = false;
+            } else {
+                lineIdx++;
+                showLine();
+            }
+        };
+        skipBtn.onclick = () => stopAll();
+    },
+
+    nextFight: function() {
+        this.fightIdx++;
+        DungeonMap.advance();
+        let storyKey = null;
+        
+        // --- MUSIK LOGIK: RANDOM vs BOSS ---
+        if (this.fightIdx === 4) {
+            storyKey = "boss";
+            AudioEngine.playBoss(); // Spezieller Track
+        } else {
+            // Bei jedem anderen Kampf: Zufälliger Track aus der Playlist
+            AudioEngine.playRandom();
+            
+            if (this.fightIdx === 1 && this.player.depth === 1) storyKey = "depth_1_start";
+        }
+        // -----------------------------------
+        
+        const proceed = () => {
+            if (this.fightIdx > 4) { 
+                this.player.depth++; 
+                if(this.player.depth > this.player.stats.high_depth) this.player.stats.high_depth = this.player.depth;
+                this.fightIdx = 1; 
+                this.log("LEVEL CLEARED! Ascending...", "c-gold bold"); 
+                
+                // Nach dem Bosskampf wieder random Musik für Campfire/nächste Ebene
+                AudioEngine.playRandom();
+                
+                this.state = "CAMPFIRE"; this.enterCampfire(); return;
+            }
+            if (this.fightIdx > 1) { this.state = "EXPLORE"; this.genEvent(); return; }
+            this.startCombat();
+        };
+        if (storyKey && DB.stories[storyKey]) this.playStory(storyKey, proceed); else proceed();
+    },
+
+    enterCampfire: function() {
+        this.log("<br><span class='c-gold bold'>--- CAMPFIRE REST ---</span>");
+        this.log("You can rest before the next depth.");
+        this.state = "EXPLORE"; this.currentEvent = "Campfire"; this.render();
+    },
+
+    genEvent: function() {
+        let evs = ["Shrine", "Trap", "Shop", "Gambler", "Altar", "Vial"];
+        this.currentEvent = evs[Math.floor(Math.random()*evs.length)];
+        this.log("<br><span class='c-blue bold'>--- EXPLORATION ---</span>");
+        
+        if (this.currentEvent === "Shop") {
+             this.playStory("shop", () => this.enterShop());
+        } else if (this.currentEvent === "Shrine") {
+            this.log("You find a glowing shrine.");
+            this.log("Options: [1] Meditate (+30 Sanity)  [2] Focus (Max Limit)");
+            this.render();
+        } else if (this.currentEvent === "Trap") {
+            this.log("A spike trap triggers!", "c-red");
+            let dmg = 10 + Math.floor(Math.random()*10);
+            this.player.hp -= dmg;
+            this.log(`You take ${dmg} damage.`);
+            this.state = "LOOT";
+            this.render();
+        } else if (this.currentEvent === "Gambler") {
+            this.log("A shadowed figure offers a game of chance.");
+            this.log("Options: [1] Bet 50 Gold (Win 100)  [2] Leave");
+            this.render();
+        } else if (this.currentEvent === "Altar") {
+            this.log("A blood-stained altar pulsing with DOOM.");
+            this.log("Options: [1] Sacrifice HP (+20 Max Sanity)  [2] Desecrate (+1 Doom, Full Heal)");
+            this.render();
+        } else if (this.currentEvent === "Vial") {
+            this.log("You find a strange vial on a corpse.");
+            this.log("Options: [1] Drink (Remove a Card)  [2] Smash (Heal 15)");
+            this.render();
+        }
+    },
+
+    enterShop: function() {
+        this.state = "SHOP";
+        this.log("The Goblin Merchant grins at you.", "c-gold");
+        this.log("He has wares, if you have coin.");
+        this.render();
+    },
+
+    buyItem: function(type) {
+        if (type === 'heal' && this.player.gold >= 50) {
+            this.player.gold -= 50; this.player.hp = Math.min(this.player.max_hp, this.player.hp + 50);
+            this.log("You chug the potion. (+50 Sanity)", "c-green");
+        } else if (type === 'card' && this.player.gold >= 100) {
+            this.player.gold -= 100; this.giveLoot(true); 
+        } else if (type === 'upgrade' && this.player.gold >= 150) {
+            this.player.gold -= 150; 
+            this.player.limit_dmg = (this.player.limit_dmg || 3) + 1;
+            this.log(`Limit Booster purchased! Base DMG is now ${this.player.limit_dmg}.`, "c-red bold");
+            this.save();
+        } else {
+            this.log("Not enough gold!", "c-grey");
+        }
+        this.render();
+    },
+
+    triggerEventOption: function(opt) {
+        if (this.currentEvent === "Campfire") {
+             if (opt===1) { this.player.hp = Math.min(this.player.max_hp, this.player.hp+40); this.log("Rested. (+40 Sanity)", "c-green"); }
+             else { this.player.max_hp += 10; this.player.hp += 10; this.log("Trained. (+10 Max Sanity)", "c-gold"); }
+        }
+        else if (this.currentEvent === "Shrine") {
+            if (opt===1) { this.player.hp = Math.min(this.player.max_hp, this.player.hp+30); this.log("Recovered!", "c-green"); }
+            else { this.player.limit = 100; this.log("Limit Break MAX!", "c-gold"); }
+        }
+        else if (this.currentEvent === "Gambler") {
+            if (opt===1) { 
+                if (this.player.gold >= 50) {
+                    this.player.gold -= 50;
+                    if (Math.random() > 0.5) { this.player.gold += 100; this.log("You won! (+100 Gold)", "c-gold"); this.fx('flash-gold'); }
+                    else { this.log("You lost...", "c-grey"); }
+                } else { this.log("Not enough gold.", "c-grey"); }
+            } else { this.log("You walked away.", "c-grey"); }
+        }
+        else if (this.currentEvent === "Altar") {
+            if (opt===1) { this.player.hp -= 20; this.player.max_hp += 20; this.log("Sacrifice accepted. Max Sanity UP.", "c-red"); this.fx('flash-red'); }
+            else { this.player.doom++; this.player.hp = this.player.max_hp; this.log("Desecrated! Doom rises, but you feel whole.", "c-doom"); this.fx('flash-doom'); }
+        }
+        else if (this.currentEvent === "Vial") {
+            if (opt===1) { 
+                if(this.player.master_deck.length > 0) {
+                    let rem = this.player.master_deck.pop();
+                    this.log(`Acid burns... Removed ${rem} from deck.`, "c-violet");
+                }
+            }
+            else { this.player.hp += 15; this.log("Smashed! The fumes heal you slightly.", "c-green"); }
+        }
+
+        this.save();
+        this.startCombat();
+    },
+
+    startCombat: function() {
+        this.state = "FIGHT"; 
+        this.player.hand = []; 
+        this.player.discard = [];
+        this.player.doom++; 
+        
+        if (!this.player.master_deck || this.player.master_deck.length === 0) {
+            this.player.master_deck = ["Desperate Attack", "Desperate Attack", "Desperate Attack"];
+        }
+        this.player.deck = this.player.master_deck.map(n => this.createCard(n));
+        
+        this.shuffle(this.player.deck); 
+        this.player.limit = Math.min(100, this.player.limit); 
+        this.player.burn = 0;
+        this.genEnemy(); this.startTurn();
+    },
+
+    genEnemy: function() {
+        let elements = ["Steel", "Shadow", "Magic"];
+        let prim = elements[Math.floor(Math.random()*3)];
+        let sec = elements[Math.floor(Math.random()*3)];
+        while (sec === prim) sec = elements[Math.floor(Math.random()*3)];
+
+        let combo = `${prim}-${sec}`; let fallback = `${sec}-${prim}`;
+        let possible = DB.archetypes[combo] || DB.archetypes[fallback] || ["Mutant"];
+        let base = possible[Math.floor(Math.random()*possible.length)];
+        let adj = ["Dark", "Ancient", "Bloody", "Elite", "Corrupted"][Math.floor(Math.random()*5)];
+        let name = `${adj} ${base}`;
+        
+        let hp = 40 + ((this.player.depth-1) * 20) + (this.player.doom * 2);
+        if (this.fightIdx === 4) { name = "BOSS: "+name.toUpperCase(); hp = Math.floor(hp*1.8); }
+        
+        this.enemy = { name, hp, max_hp: hp, deck: [], discard: [], burn: 0, frozen: false };
+        
+        for(let i=0; i<12; i++) {
+            let r = Math.random();
+            let el = (r < 0.5) ? prim : ((r < 0.85) ? sec : elements[Math.floor(Math.random()*3)]);
+            let baseW = DB.cards.base_weapons[el][Math.floor(Math.random()*DB.cards.base_weapons[el].length)];
+            let wName = `${el} ${baseW}`; 
+            
+            let mult = 1;
+            if(this.player.depth > 1 && Math.random() < 0.3) { wName = "Brutal " + wName; mult=3; }
+            if(this.player.depth > 3 && Math.random() < 0.2) { wName = "Deadly " + wName; mult=5; }
+            
+            let burn = false, freeze = false;
+            if (el === "Magic" && Math.random() < 0.3) { burn=true; wName="Burning "+baseW; }
+            if (el === "Magic" && Math.random() < 0.3) { freeze=true; wName="Frozen "+baseW; }
+            let dmg = 6 + this.player.depth + Math.floor(this.player.doom / 2);
+            this.enemy.deck.push(new Card(wName, [el], dmg, mult, 0, 0, false, -1, false, false, false, burn, freeze));
+        }
+        this.enemy.deck.push(this.createCard("Dark Potion"));
+        if(this.player.depth > 2) this.enemy.deck.push(this.createCard("Doom Bomb"));
+        this.shuffle(this.enemy.deck);
+
+        this.log(`<br><span class='c-gold bold'>--- Encounter: ${name} ---</span>`);
+        
+        // --- NEW INTRO SYSTEM ---
+        let tmpl = DB.enemy_templates.find(e => e.keywords.some(k => name.includes(k)));
+        if (tmpl && tmpl.intros) {
+            let intro = tmpl.intros[Math.floor(Math.random()*tmpl.intros.length)];
+            this.log(intro, "intro-text");
+        } else {
+            // Fallback Intro
+            let gen = DB.generic_intros[Math.floor(Math.random()*DB.generic_intros.length)];
+            this.log(gen, "intro-text");
+        }
+        // ------------------------
+
+        if (this.player.doom > 5) this.log("The air feels heavy with Doom.", "c-doom");
+    },
+
+    startTurn: function() {
+        this.log("Turn Start", "entry turn");
+        
+        if (this.player.burn > 0) { this.player.hp -= 5; this.player.burn--; this.log("You burn for 5 dmg!", "c-burn"); this.float(-5, 'burn'); }
+        if (this.enemy.burn > 0) { this.enemy.hp -= 5; this.enemy.burn--; this.log("Enemy burns for 5 dmg!", "c-burn"); }
+
+        let b = 0; this.player.leech = false; this.player.shack = false; let keep = [];
+        this.player.hand.forEach(c => {
+            c.tickHandTurn(); 
+            if (c.pass_dmg !== 0) {
+                if (c.pass_dmg > 0) b += c.pass_dmg; 
+                else { 
+                    this.player.hp += c.pass_dmg; 
+                    this.log(`CURSE! ${c.name} hurts you: ${c.pass_dmg}`, "c-doom");
+                    this.float(c.pass_dmg, "red");
+                    this.fx('flash-doom');
+                }
+            }
+            if (c.pass_leech) this.player.leech = true;
+            if (c.is_shackle) { this.player.shack = true; this.log("You are SHACKLED!", "c-red bold"); }
+            if (c.bomb_timer > -1) { 
+                if (c.tickBomb()) { this.log("BOOM! Bomb explodes!", "c-red"); this.fx('shake-hard'); this.player.hp -= 15; this.float(-15, 'red'); } 
+                else keep.push(c); 
+            } else keep.push(c);
+        });
+        this.player.hand = keep; this.player.buff = b;
+        
+        while(this.player.hand.length < 3) {
+            if (this.player.deck.length === 0) { 
+                if (this.player.discard.length > 0) { this.player.deck = [...this.player.discard]; this.player.discard = []; this.shuffle(this.player.deck); } 
+                else { this.player.deck.push(this.createCard("Desperate Attack")); }
+            }
+            let c = this.player.deck.shift(); c.applyDrawLuck(); this.player.hand.push(c);
+        }
+        
+        this.enemy.hand = []; let eCount = this.enemy.frozen ? 2 : 3;
+        if (this.enemy.frozen) { this.log("Enemy is FROZEN! Skips a slot.", "c-freeze"); this.enemy.hand.push(new Card("FROZEN", ["Potion"], 0)); this.enemy.frozen = false; }
+
+        for(let i=0; i<eCount; i++) { 
+            if (this.enemy.deck.length === 0) {
+                if (this.enemy.discard.length > 0) { this.enemy.deck = [...this.enemy.discard]; this.enemy.discard = []; this.shuffle(this.enemy.deck); }
+                else { this.enemy.deck.push(new Card("Struggle", ["Steel"], 4)); }
+            }
+            this.enemy.hand.push(this.enemy.deck.shift()); 
+        }
+        
+        // --- NEW ATMOSPHERIC MOVE TEXT ---
+        const fmt = (c) => c ? `${c.getColoredName()} ${c.getColoredElement()}` : "Nothing";
+        let c1 = fmt(this.enemy.hand[0]);
+        let c2 = fmt(this.enemy.hand[1]);
+        let c3 = fmt(this.enemy.hand[2]);
+
+        let t = "The enemy prepares {c1}, {c2} and {c3}."; // Default
+        
+        let tmpl = DB.enemy_templates.find(e => e.keywords.some(k => this.enemy.name.includes(k)));
+        if (tmpl && tmpl.moves) {
+            // Use specific template
+            t = tmpl.moves[Math.floor(Math.random()*tmpl.moves.length)];
+        } else {
+            // Use generic atmospheric fallback
+            t = DB.generic_moves[Math.floor(Math.random()*DB.generic_moves.length)];
+        }
+
+        t = t.replace("{c1}", c1).replace("{c2}", c2).replace("{c3}", c3);
+        this.log(t, "c-text");
+        // ---------------------------------
+
+        this.render();
+    },
+
+    resolve: function() {
+        let sel = this.player.hand.filter(c => c.selected); if (sel.length === 0) return;
+        if (this.player.shack && sel.length > 1) { this.log("SHACKLED! Only 1 card allowed.", "c-warn"); return; }
+        this.log("<span class='c-text bold'>--- ACTION PHASE ---</span>");
+        let played = [...sel];
+        
+        // --- NEW: DUAL WIELD ITEM DROP CHANCE ---
+        if (played.length === 2) {
+            // Check if both are weapons (attacks) -> Not Heals, Not Passive
+            let c1 = played[0]; let c2 = played[1];
+            if (!c1.isHeal() && !c1.isPassive() && !c2.isHeal() && !c2.isPassive()) {
+                // 25% Chance
+                if (Math.random() < 0.25) {
+                    let loot = ["Dark Potion", "Time Bomb", "Chaos Shard", "Hellfire Grenade"];
+                    let item = loot[Math.floor(Math.random()*loot.length)];
+                    this.log("LUCKY FIND! In the chaos, you grabbed a " + item + "!", "item-drop");
+                    this.fx('flash-gold');
+                    // Add to hand or discard
+                    let newC = this.createCard(item);
+                    if (this.player.hand.length < 5) this.player.hand.push(newC);
+                    else this.player.discard.push(newC);
+                }
+            }
+        }
+        // -----------------------------------------
+        
+        this.enemy.hand.forEach(ec => { 
+            if (ec.is_steal && this.player.hand.length > 0) { 
+                let target = this.player.hand.reduce((p, c) => (p.level > c.level ? p : c)); 
+                this.log(`Enemy steals ${target.getColoredName()}!`, "c-violet"); 
+                this.player.hand = this.player.hand.filter(c => c !== target); 
+                this.player.discard.push(target); target.reset(); 
+            } 
+        });
+
+        for (let i=0; i<2; i++) {
+            let pc = null; let ec = this.enemy.hand[i] || null;
+            if (played.length === 1) { let c = played[0]; if (c.isHeal() || c.isPassive() || c.is_steal) { if (i===0) pc = c; } else { pc = c; } }
+            else if (i < played.length) pc = played[i];
+            
+            if (ec && ec.name === "FROZEN") {
+                this.log(`Slot ${i+1}: Enemy Frozen.`, "c-freeze");
+                if (pc) { let d = pc.total_damage + this.player.buff; this.enemy.hp -= d; this.log(`You hit the frozen target! ${d} DMG`, "c-gold"); this.addLimit(5); }
+                continue; 
+            }
+
+            if (!pc && !ec) continue;
+            this.log(`<span class='c-grey'>Slot ${i+1}</span>`);
+            if (pc && pc.is_chaos && Math.random() < 0.3) { let p = Math.max(3, Math.floor(pc.total_damage * 0.5)); this.player.hp -= p; this.log(`CHAOS TRIBUTE! You bleed -${p} Sanity`, "c-chaos"); this.fx('flash-chaos'); this.float(-p, 'red'); }
+
+            if (pc && ec) {
+                if (pc.is_steal) {
+                    this.log(`YOU STOLE ${ec.getColoredName()}!`, "c-violet");
+                    this.log("Enemy attack canceled.", "c-grey italic");
+                    this.fx('flash-white');
+                }
+                else if (pc.isPassive()) this.log("Relic/Item triggered.", "c-green");
+                else if (pc.isHeal()) { let h = Math.min(pc.heal_val, this.player.max_hp - this.player.hp); this.player.hp += h; this.log(`Healed +${h}`, "c-green"); this.float(h, 'green'); this.addLimit(5); }
+                else if (ec.isHeal()) { this.enemy.hp += ec.heal_val; this.log(`Enemy heals +${ec.heal_val}`, "c-warn"); }
+                else {
+                    let score = 0; const win = (a, b) => { if (a=="Chaos") return 1; if (b=="Chaos") return -1; if (a==b) return 0; if ((a=="Steel" && b=="Shadow") || (a=="Shadow" && b=="Magic") || (a=="Magic" && b=="Steel")) return 1; return -1; };
+                    
+                    // CHECK ALL SYMBOLS (DUAL TYPES)
+                    pc.symbols.forEach(ps => { ec.symbols.forEach(es => score += win(ps, es)); });
+                    
+                    if (score > 0) { 
+                        let d = pc.total_damage + this.player.buff; this.enemy.hp -= d; 
+                        this.log(`HIT! You strike for ${d} DMG`, "c-gold"); this.fx('shake'); this.narrate(`win_${pc.symbols[0].toLowerCase()}`);
+                        if (this.player.leech) this.player.hp = Math.min(this.player.hp + Math.floor(d/2), this.player.max_hp);
+                        if (pc.is_burn) { this.enemy.burn += 3; this.log("Enemy Burned!", "c-burn"); } if (pc.is_freeze) { this.enemy.frozen = true; this.log("Enemy Frozen!", "c-freeze"); }
+                        this.addLimit(10);
+                    } else if (score < 0) { 
+                        let d = ec.total_damage; this.player.hp -= d; 
+                        this.log(`OUCH! You take ${d} DMG from ${ec.getColoredName()}`, "c-red"); this.fx('flash-red'); this.float(-d, 'red'); this.narrate("loss");
+                        if (ec.is_burn) { this.player.burn += 3; this.log("You are burning!", "c-burn"); }
+                        this.addLimit(15); 
+                    } else { this.log("PARRIED", "c-cyan"); this.narrate("parry"); this.addLimit(2); }
+                }
+            } else if (pc) {
+                if (pc.is_steal) { this.log("Steal failed (No target).", "c-grey"); }
+                else if (pc.isHeal()) { this.player.hp += pc.heal_val; this.log(`Healing +${pc.heal_val}`, "c-green"); this.float(pc.heal_val, 'green'); }
+                else { 
+                    let d = pc.total_damage + this.player.buff; this.enemy.hp -= d; 
+                    this.log(`DIRECT HIT! Strike for ${d} DMG`, "c-gold"); this.fx('shake');
+                    if (pc.is_burn) { this.enemy.burn += 3; this.log("Enemy Burned!", "c-burn"); } if (pc.is_freeze) { this.enemy.frozen = true; this.log("Enemy Frozen!", "c-freeze"); }
+                    this.addLimit(10);
+                }
+            } else if (ec) { 
+                let d = ec.total_damage; this.player.hp -= d; this.log(`OPEN HIT! Take ${d} DMG from ${ec.getColoredName()}`, "c-red"); this.fx('flash-red'); this.float(-d, 'red'); this.addLimit(10);
+            }
+        }
+        played.forEach(c => { this.player.hand = this.player.hand.filter(h => h !== c); if (!c.isDouble()) this.player.discard.push(c); c.reset(); });
+        this.player.hand.forEach(c => c.levelUp()); this.enemy.hand.forEach(c => { c.reset(); if(this.enemy.discard) this.enemy.discard.push(c); });
+        if (this.player.hp <= 0) { this.state = "GAMEOVER"; this.log("<br><span class='c-red bold'>YOU ARE DEAD.</span>"); }
+        else if (this.enemy.hp <= 0) { 
+            this.state = "LOOT"; 
+            
+            // Increment Stats
+            this.player.stats.kills++;
+
+            // --- NEW DEATH DESCRIPTION ---
+            let tmpl = DB.enemy_templates.find(e => e.keywords.some(k => this.enemy.name.includes(k)));
+            if (tmpl && tmpl.death) this.log(tmpl.death, "death-text");
+            // -----------------------------
+
+            this.log("<br><span class='c-gold bold'>VICTORY!</span>");
+            let goldDrop = 20 + (this.player.depth * 5) + Math.floor(Math.random()*15);
+            if(this.fightIdx===4) goldDrop*=2;
+            this.player.gold += goldDrop;
+            this.log(`Looted ${goldDrop} Gold coins!`, "c-gold"); this.fx('flash-gold');
+            this.enterRewardScreen(); 
+        }
+        else this.startTurn();
+    },
+
+    narrate: function(k) { let r = DB.world.narrative.reactions[k]; if (r) { let t = r[Math.floor(Math.random()*r.length)].replace("{enemy_name}", this.enemy.name); this.log(`<span class='c-grey italic'>> "${t}"</span>`); } },
+    addLimit: function(v) { this.player.limit = Math.min(100, this.player.limit + v); },
+    activateLimit: function() { if (this.player.limit < 100) return; this.state = "LIMIT"; this.render(); },
+    
+    // --- FIXED LIMIT BREAK LOGIC ---
+    executeLimit: function() {
+        if (this.state !== "LIMIT") return; 
+
+        if (this.limit_active) {
+            // PHASE 2: SPAM CLICK (MASHING)
+            if (this.enemy.hp <= 0) return; // Gegner tot, klicks ignorieren
+
+            let dmg = this.player.limit_dmg || 3;
+            this.enemy.hp -= dmg;
+            this.limit_hits++;
+            this.float(dmg, 'red');
+            this.fx('shake');
+            this.render();
+
+            // FIX 1: Wenn Gegner während des Mashing stirbt -> Sofort beenden
+            if (this.enemy.hp <= 0) {
+                clearTimeout(this.limit_timer_ref);
+                this.endLimit();
+            }
+
+        } else {
+            // PHASE 1: INITIALE AKTIVIERUNG
+            this.limit_active = true;
+            this.limit_hits = 0;
+            this.player.limit = 0; // Balken leeren
+            this.log("LIMIT BREAK ACTIVATED! MASH THE BUTTON!!!", "c-red bold");
+            this.fx('flash-white');
+            
+            // Erster Hit (Gratis beim Start)
+            let dmg = this.player.limit_dmg || 3;
+            this.enemy.hp -= dmg;
+            this.limit_hits++;
+            this.float(dmg, 'red');
+            
+            this.render();
+
+            // 1 Sekunden Timer starten
+            this.limit_timer_ref = setTimeout(() => {
+                this.endLimit();
+            }, 1000);
+        }
+    },
+
+    endLimit: function() {
+        this.limit_active = false; // Mashing deaktivieren
+        let totalDmg = this.limit_hits * (this.player.limit_dmg || 3);
+        this.log(`COMBO FINISHED! ${this.limit_hits} HITS for ${totalDmg} DMG!`, "c-gold bold");
+        
+        if (this.enemy.hp <= 0) { 
+            this.state = "LOOT"; 
+            
+            // Increment Stats
+            this.player.stats.kills++;
+
+            // Death Text Logic (Storyteller Edition Support)
+            let tmpl = DB.enemy_templates.find(e => e.keywords.some(k => this.enemy.name.includes(k)));
+            if (tmpl && tmpl.death) this.log(tmpl.death, "death-text");
+
+            this.log("<br><span class='c-gold bold'>VICTORY!</span>"); 
+            let goldDrop = 50; this.player.gold += goldDrop; this.log(`Looted ${goldDrop} Gold!`, "c-gold");
+            this.enterRewardScreen();
+        } else {
+            // FIX 2: WICHTIG! Status explizit zurücksetzen, sonst geht Mashing weiter
+            this.state = "FIGHT"; 
+            this.startTurn();
+        }
+    },
+    // -----------------------------
+
+    enterRewardScreen: function() {
+        this.state = "REWARD";
+        this.rewardOptions = [];
+        for(let i=0; i<3; i++) {
+             let pool = DB.cards.base_weapons["Steel"].concat(DB.cards.base_weapons["Shadow"]).concat(DB.cards.base_weapons["Magic"]);
+             let b = pool[Math.floor(Math.random()*pool.length)];
+             
+             // --- LOOT SCALING ---
+             let n = b; 
+             let roll = Math.random() + (this.player.depth * 0.05); // Better chance deeper
+             if (roll > 0.95) n = "Cursed " + b; // Cursed Chance
+             else if (roll > 0.9) n = "Divine " + b; 
+             else if (roll > 0.6) n = "Enchanted " + b;
+             
+             this.rewardOptions.push(n);
+        }
+        this.render();
+    },
+
+    selectReward: function(n) {
+        this.log(`Acquired: ${n}`, "c-green bold"); 
+        this.log("Added to Collection.", "c-grey");
+        this.player.collection.push(n); // ONLY TO COLLECTION
+        this.state = "LOOT"; 
+        this.nextFight();
+    },
+    
+    giveLoot: function(silent=false) {
+        let pool = DB.cards.base_weapons["Steel"].concat(DB.cards.base_weapons["Shadow"]).concat(DB.cards.base_weapons["Magic"]);
+        let b = pool[Math.floor(Math.random()*pool.length)];
+        if(!silent) this.log(`Acquired: ${b}`, "c-green bold"); 
+        this.player.collection.push(b);
+    },
+
+    shuffle: function(a) { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} },
+    log: function(msg, cls) { this.logQueue.push({msg, cls}); if (!this.isTyping) this.processQueue(); },
+    processQueue: async function() { if (this.logQueue.length === 0) { this.isTyping = false; return; } this.isTyping = true; let item = this.logQueue.shift(); await this.typeWriter(item.msg, item.cls); this.processQueue(); },
+    typeWriter: function(html, cls) { return new Promise(resolve => { let d = document.createElement('div'); d.className = "entry " + (cls || "") + " typing"; this.logEl.appendChild(d); let temp = document.createElement('div'); temp.innerHTML = html; let nodes = Array.from(temp.childNodes); let i = 0; const typeNode = (node) => { if (!node) { d.classList.remove("typing"); this.logEl.scrollTop = this.logEl.scrollHeight; resolve(); return; } if (node.nodeType === 3) { let text = node.textContent; let j = 0; let timer = setInterval(() => { d.insertAdjacentText('beforeend', text[j]); this.logEl.scrollTop = this.logEl.scrollHeight; j++; if (j >= text.length) { clearInterval(timer); typeNode(nodes[++i]); } }, 5); } else if (node.nodeType === 1) { let el = document.createElement(node.tagName); el.className = node.className; el.style.cssText = node.style.cssText; d.appendChild(el); let innerText = node.textContent; let j = 0; let timer = setInterval(() => { el.textContent += innerText[j]; this.logEl.scrollTop = this.logEl.scrollHeight; j++; if (j >= innerText.length) { clearInterval(timer); typeNode(nodes[++i]); } }, 5); } else { typeNode(nodes[++i]); } }; typeNode(nodes[i]); }); },
+    fx: function(t) { document.getElementById('game-body').classList.add(t); setTimeout(()=>document.getElementById('game-body').classList.remove(t), 500); },
+    float: function(v, t) { let e = document.createElement('div'); e.className = `floating-val c-${t}`; e.innerText = v > 0 ? `+${v}` : v; document.body.appendChild(e); setTimeout(()=>e.remove(), 1200); },
+    save: function() { localStorage.setItem('inf_v86_save', JSON.stringify({ hp: this.player.hp, depth: this.player.depth, doom: this.player.doom, coll: this.player.collection, master: this.player.master_deck, cls: this.player.class, limit: this.player.limit, mhp: this.player.max_hp, gold: this.player.gold, ld: this.player.limit_dmg, fs: this.fontSize, stats: this.player.stats })); },
+    load: function() { 
+        let d = JSON.parse(localStorage.getItem('inf_v86_save')); 
+        this.player.hp = d.hp; this.player.depth = d.depth; 
+        this.player.doom = d.doom || 0;
+        this.player.collection = d.coll || []; 
+        this.player.master_deck = d.master || []; 
+        this.player.class = d.cls || "Warrior"; 
+        this.player.limit = d.limit || 0; 
+        this.player.max_hp = d.mhp || 120; 
+        this.player.gold = d.gold || 0; 
+        this.player.limit_dmg = d.ld || 3;
+        this.player.stats = d.stats || { kills: 0, runs: 0, high_depth: 1 }; // Load or Default
+        this.fontSize = d.fs || 15;
+        this.adjustFontSize(this.fontSize);
+    },
+    
+    toggleDeck: function(idx, fromCollection) {
+        if(this.sell_mode && fromCollection) {
+            let n = this.player.collection[idx];
+            let c = this.createCard(n);
+            let price = c.getSellPrice();
+            this.player.gold += price;
+            this.player.collection.splice(idx, 1);
+            this.log(`Sold ${n} for ${price}G`, "c-gold");
+            this.render();
+            return;
+        }
+
+        if(fromCollection) { 
+            // EQUIP LOGIC: Collection -> Deck
+            if (this.player.master_deck.length >= MAX_DECK_SIZE) {
+                alert("DECK FULL! Remove a card first.");
+                return;
+            }
+            let n = this.player.collection[idx]; 
+            this.player.master_deck.push(n); 
+            // FIX: Remove from collection when equipping
+            this.player.collection.splice(idx, 1); 
+        } else {
+            // UNEQUIP LOGIC: Deck -> Collection
+            let n = this.player.master_deck[idx];
+            this.player.collection.push(n);
+            this.player.master_deck.splice(idx, 1); 
+        }
+        this.render(); 
+    },
+
+    toggleSellMode: function() {
+        this.sell_mode = !this.sell_mode;
+        this.render();
+    },
+
+    render: function() {
+        if (this.state === "START") return;
+        
+        let mB = document.getElementById('main-btn');
+        let aR = document.getElementById('action-row');
+        aR.innerHTML = ''; aR.appendChild(mB);
+        mB.style.display = 'block'; mB.onclick = null; mB.className = 'action-btn'; mB.disabled=false;
+
+        document.getElementById('p-hp').innerText = `SANITY: ${this.player.hp}/${this.player.max_hp}`;
+        document.getElementById('p-gold').innerText = this.player.gold;
+        document.getElementById('lvl-disp').innerText = `DEPTH ${this.player.depth} (DOOM ${this.player.doom})`;
+        document.getElementById('cls-disp').innerText = `CLASS: ${this.player.class.toUpperCase()}`;
+        document.getElementById('e-hp').innerText = (this.state==="FIGHT"||this.state==="LIMIT")?`${this.enemy.name} (${this.enemy.hp} HP)`:"DUNGEON";
+        
+        let lb = document.getElementById('limit-bar'); lb.style.width = this.player.limit + "%";
+        if(this.player.limit >= 100) lb.classList.add('limit-ready'); else lb.classList.remove('limit-ready');
+
+        let s = document.getElementById('p-status-bar'); s.innerHTML = "";
+        if(this.player.leech) s.innerHTML += "<span class='badge b-leech'>LEECH</span>";
+        if(this.player.shack) s.innerHTML += "<span class='badge b-shack'>SHACKLED</span>";
+        if(this.player.buff > 0) s.innerHTML += `<span class='badge b-buff'>+${this.player.buff} DMG</span>`;
+        if(this.player.burn > 0) s.innerHTML += `<span class='badge b-burn'>BURN ${this.player.burn}</span>`;
+        
+        let eS = document.getElementById('e-status-bar'); eS.innerHTML = "";
+        if(this.enemy.burn > 0) eS.innerHTML += `<span class='badge b-burn'>BURN ${this.enemy.burn}</span>`;
+        if(this.enemy.frozen) eS.innerHTML += `<span class='badge b-freeze'>FROZEN</span>`;
+        
+        let hD = document.getElementById('hand-container'); hD.innerHTML = "";
+        
+        let pC = document.getElementById('preview-container');
+        if (this.state === "FIGHT" && this.player.deck.length > 0) {
+            let next = this.player.deck[0];
+            pC.style.display = "block";
+            let cCol = next.symbols[0] == "Steel" ? "c-cyan" : (next.symbols[0] == "Shadow" ? "c-violet" : "c-blue");
+            pC.innerHTML = `NEXT: <span class="${cCol}">[${next.symbols[0]}] ???</span>`;
+        } else {
+            pC.style.display = "none";
+        }
+
+        if (this.state === "DECK") {
+            let returnText = (this.prev === "SHOP") ? "BACK TO SHOP" : "FINISH EDIT";
+            mB.innerText = returnText; 
+            mB.onclick=()=> { this.state = (this.prev === "SHOP") ? "SHOP" : "MENU"; this.render(); };
+
+            // SELL TOGGLE
+            let sBtn = document.createElement('button');
+            sBtn.className = this.sell_mode ? 'action-btn red' : 'action-btn gold';
+            sBtn.style.fontSize = "0.9em"; sBtn.style.width = "100%"; sBtn.style.marginBottom="10px";
+            sBtn.innerText = this.sell_mode ? "MODE: SELLING (CLICK TO SELL)" : "MODE: EQUIP (CLICK TO ADD)";
+            sBtn.onclick = () => this.toggleSellMode();
+            hD.appendChild(sBtn);
+
+            let dH = document.createElement('div');
+            dH.className='deck-header';
+            dH.innerText = `ACTIVE DECK (${this.player.master_deck.length}/${MAX_DECK_SIZE})`;
+            hD.appendChild(dH);
+
+            this.player.master_deck.forEach((n, i) => { 
+                let c = this.createCard(n);
+                let b = document.createElement('button'); b.className=`card-btn ${c.getRarityClass()}`; b.innerHTML=c.getHtml(); 
+                if(!this.sell_mode) b.onclick=()=>this.toggleDeck(i, false); 
+                else b.disabled = true; // Can't sell active deck directly
+                hD.appendChild(b); 
+            });
+            
+            let cH = document.createElement('div'); cH.className="coll-header"; cH.innerText="COLLECTION"; hD.appendChild(cH);
+            
+            if(this.player.collection.length === 0) {
+                let empty = document.createElement('div'); empty.innerText="No spare cards."; empty.className="c-grey italic"; hD.appendChild(empty);
+            }
+
+            this.player.collection.forEach((n, i) => {
+                let c = this.createCard(n);
+                let b = document.createElement('button'); b.className=`card-btn ${c.getRarityClass()}`; 
+                
+                let sellTxt = this.sell_mode ? `<br><span class='c-gold'>SELL: ${c.getSellPrice()}G</span>` : "";
+                b.innerHTML=`<div>${c.getColoredName()}</div><div>${c.getColoredElement()}${sellTxt}</div>`;
+                
+                b.onclick=()=>this.toggleDeck(i, true); 
+                hD.appendChild(b);
+            });
+
+        } else if (this.state === "MENU") {
+            mB.innerText = "DESCEND INTO ABYSS"; mB.onclick=()=>this.startRun(); 
+            let dB = document.createElement('button'); dB.id='sec-btn'; dB.className='action-btn sec'; dB.innerText="MANAGE DECK"; dB.onclick=()=> {this.prev="MENU"; this.state="DECK"; this.render();}; aR.appendChild(dB);
+            
+            // --- NEW DASHBOARD HUB ---
+            // Random Lore Snippet
+            let whisper = DB.menu_whispers[Math.floor(Math.random() * DB.menu_whispers.length)];
+            
+            let hubDiv = document.createElement('div');
+            hubDiv.className = 'hub-grid';
+            hubDiv.innerHTML = `
+                <div class="hub-box">
+                    <div class="hub-title">HERO RECORD</div>
+                    <div class="stat-row"><span>CLASS:</span> <span class="stat-val c-cyan">${this.player.class.toUpperCase()}</span></div>
+                    <div class="stat-row"><span>GOLD:</span> <span class="stat-val c-gold">${this.player.gold}</span></div>
+                    <div class="stat-row"><span>MAX DEPTH:</span> <span class="stat-val c-green">${this.player.stats.high_depth}</span></div>
+                    <div class="stat-row"><span>TOTAL KILLS:</span> <span class="stat-val c-red">${this.player.stats.kills}</span></div>
+                </div>
+                <div class="hub-box">
+                    <div class="hub-title">DUNGEON WHISPERS</div>
+                    <div class="lore-text">"${whisper}"</div>
+                </div>
+            `;
+            hD.appendChild(hubDiv);
+            // -------------------------
+
+            // --- RESET BUTTON & SLIDERS IN MENU HUB ---
+            let rBtn = document.createElement('button');
+            rBtn.className = 'action-btn red';
+            rBtn.style.marginTop = '10px';
+            rBtn.style.fontSize = '0.9em';
+            rBtn.innerText = "⚠ RESET SAVE DATA";
+            rBtn.onclick = () => {
+                if(confirm("WARNING: ALL PROGRESS WILL BE LOST.\n\nAre you sure you want to delete your save file?")) {
+                    localStorage.removeItem('inf_v86_save');
+                    location.reload();
+                }
+            };
+            hD.appendChild(rBtn);
+
+            // SETTINGS
+            let sDiv = document.createElement('div');
+            sDiv.className = 'settings-container';
+            sDiv.innerHTML = `
+                <div class="setting-row">
+                    <label>TEXT SIZE</label>
+                    <input type="range" min="12" max="26" value="${this.fontSize}" oninput="Game.adjustFontSize(this.value)">
+                </div>
+                <div class="setting-row">
+                    <label>MUSIC VOLUME</label>
+                    <input type="range" min="0" max="100" value="${AudioEngine.volume * 100}" oninput="AudioEngine.setVolume(this.value)">
+                </div>
+            `;
+            hD.appendChild(sDiv);
+            // -----------------------------
+
+        } else if (this.state === "FIGHT") {
+            let c = this.player.hand.filter(x=>x.selected).length; mB.innerText = c>0?`EXECUTE ATTACK (${c})`:"SELECT YOUR CARDS"; mB.className=c>0?"action-btn red":"action-btn"; mB.disabled=(c===0); mB.onclick=()=>this.resolve();
+            if (this.player.limit >= 100) { let lB = document.createElement('button'); lB.id='sec-btn'; lB.className='action-btn sec'; lB.style.border="1px solid var(--gold)"; lB.style.color="var(--gold)"; lB.innerText="LIMIT BREAK"; lB.onclick=()=> this.activateLimit(); aR.appendChild(lB); }
+            this.player.hand.forEach(c => { let b = document.createElement('button'); b.className=`card-btn ${c.getRarityClass()} ${c.selected?'selected':''}`; b.innerHTML=c.getHtml(); b.onclick=()=>{if(c.selected)c.selected=false; else if(this.player.hand.filter(x=>x.selected).length<2)c.selected=true; this.render();}; hD.appendChild(b); });
+        } else if (this.state === "LIMIT") {
+            // NEW LIMIT UI
+            if (this.limit_active) {
+                mB.innerText = "MASH !!!"; 
+                mB.className = "action-btn red mash-mode";
+            } else {
+                mB.innerText = "UNLEASH ULTIMATE"; 
+                mB.className = "action-btn red limit-ready"; 
+            }
+            mB.onclick=()=>this.executeLimit();
+            let base = this.player.limit_dmg || 3;
+            hD.innerHTML = `<div class="c-gold bold" style="text-align:center; padding:20px;">LIMIT BREAK READY<br>MASH AS FAST AS YOU CAN!<br>DMG PER CLICK: ${base}</div>`;
+        } else if (this.state === "EXPLORE") {
+            mB.style.display="none"; 
+            if(this.currentEvent === "Shop") { /* Shop rendered in specific state */ } 
+            else if (this.currentEvent === "Campfire") {
+                let b1 = document.createElement('button'); b1.className='action-btn green'; b1.innerText="REST (+40 Sanity)"; b1.onclick=()=>this.triggerEventOption(1); 
+                let b2 = document.createElement('button'); b2.className='action-btn gold'; b2.innerText="TRAIN (+10 MaxSanity)"; b2.onclick=()=>this.triggerEventOption(2); 
+                aR.appendChild(b1); aR.appendChild(b2);
+            } else if (this.currentEvent === "Gambler") {
+                let b1 = document.createElement('button'); b1.className='action-btn gold'; b1.innerText="BET 50 GOLD"; b1.onclick=()=>this.triggerEventOption(1); 
+                let b2 = document.createElement('button'); b2.className='action-btn sec'; b2.innerText="LEAVE"; b2.onclick=()=>this.triggerEventOption(2); 
+                aR.appendChild(b1); aR.appendChild(b2);
+            } else if (this.currentEvent === "Altar") {
+                let b1 = document.createElement('button'); b1.className='action-btn red'; b1.innerText="SACRIFICE (-20 HP)"; b1.onclick=()=>this.triggerEventOption(1); 
+                let b2 = document.createElement('button'); b2.className='action-btn doom'; b2.innerText="DESECRATE"; b2.onclick=()=>this.triggerEventOption(2); 
+                aR.appendChild(b1); aR.appendChild(b2);
+            } else if (this.currentEvent === "Vial") {
+                let b1 = document.createElement('button'); b1.className='action-btn blue'; b1.innerText="DRINK (REMOVE CARD)"; b1.onclick=()=>this.triggerEventOption(1); 
+                let b2 = document.createElement('button'); b2.className='action-btn green'; b2.innerText="SMASH (+15 HP)"; b2.onclick=()=>this.triggerEventOption(2); 
+                aR.appendChild(b1); aR.appendChild(b2);
+            } else {
+                let b1 = document.createElement('button'); b1.className='action-btn blue'; b1.innerText="OPTION 1"; b1.onclick=()=>this.triggerEventOption(1); 
+                let b2 = document.createElement('button'); b2.className='action-btn red'; b2.innerText="OPTION 2"; b2.onclick=()=>this.triggerEventOption(2); 
+                aR.appendChild(b1); aR.appendChild(b2);
+            }
+        } else if (this.state === "SHOP") {
+            mB.innerText = "LEAVE SHOP"; mB.onclick = () => this.startCombat();
+            hD.innerHTML = "<div class='deck-header c-gold'>GOBLIN MERCHANT</div>";
+            let items = [
+                {name: "Sanity Potion", cost: 50, desc: "+50 Sanity", func: 'heal', cls: 'r-green'},
+                {name: "Limit Booster", cost: 150, desc: "+1 Limit DMG", func: 'upgrade', cls: 'r-red'},
+                {name: "Mystery Artifact", cost: 100, desc: "Random Card", func: 'card', cls: 'r-gold'}
+            ];
+            items.forEach(it => {
+                let b = document.createElement('button'); b.className=`card-btn ${it.cls}`;
+                b.innerHTML = `<div><span class='bold'>${it.name}</span> <small>(${it.desc})</small></div><div class='c-gold'>${it.cost}G</div>`;
+                b.onclick = () => this.buyItem(it.func);
+                hD.appendChild(b);
+            });
+            let sellL = document.createElement('div'); sellL.style.marginTop="20px"; sellL.className="c-grey italic"; sellL.innerText="Need Gold? Sell cards."; hD.appendChild(sellL);
+            let dB = document.createElement('button'); dB.className='action-btn sec'; dB.innerText="SELL LOOT"; dB.onclick=()=> {this.prev="SHOP"; this.state="DECK"; this.render();}; hD.appendChild(dB);
+
+        } else if (this.state === "REWARD") {
+            mB.style.display="none";
+            hD.innerHTML = "<div class='deck-header c-gold'>CHOOSE YOUR REWARD</div>";
+            this.rewardOptions.forEach(n => {
+                let c = this.createCard(n);
+                let b = document.createElement('button'); b.className=`card-btn ${c.getRarityClass()}`; b.innerHTML=c.getHtml(); 
+                b.onclick=()=>this.selectReward(n); hD.appendChild(b);
+            });
+        } else if (this.state === "LOOT") {
+            mB.innerText = "CONTINUE"; mB.onclick=()=>this.nextFight(); let dB = document.createElement('button'); dB.id='sec-btn'; dB.className='action-btn sec'; dB.innerText="MANAGE DECK"; dB.onclick=()=> {this.prev="MENU"; this.state="DECK"; this.render();}; aR.appendChild(dB);
+        } else if (this.state === "GAMEOVER") { mB.innerText = "RESTART RUN"; mB.onclick=()=>{localStorage.removeItem('inf_v86_save'); location.reload();}; }
+    }
+};
+
+window.onload = () => Game.init();
+</script>
+</body>
+</html>
